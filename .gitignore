@@ -1,0 +1,37 @@
+# Video files (too large for git)
+data/videos/*.mp4
+data/videos/*.avi
+data/videos/*.mov
+
+# Downloaded C3D files (keep only the 2 samples)
+data/raw/000*.c3d
+data/raw/pitching_metadata.csv
+data/raw/hitting_metadata.csv
+
+# Output files (regenerable)
+data/output/*.gif
+data/output/*.mp4
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
