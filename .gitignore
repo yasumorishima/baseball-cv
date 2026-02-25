@@ -9,7 +9,6 @@ data/raw/pitching_metadata.csv
 data/raw/hitting_metadata.csv
 
 # Output files (regenerable)
-data/output/*.gif
 data/output/*.mp4
 
 # Python
