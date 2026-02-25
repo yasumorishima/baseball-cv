@@ -19,11 +19,11 @@ Driveline OpenBiomechanics Project C3D files loaded with ezc3d and rendered as 3
 
 **Pitching motion** (45 body markers, 360 Hz):
 
-![Pitching Skeleton](data/output/skeleton_pitching_frame.png)
+![Pitching Skeleton](data/output/skeleton_pitching_anim.gif)
 
 **Hitting motion** (45 body + 10 bat markers, 360 Hz):
 
-![Hitting Skeleton](data/output/skeleton_hitting_frame.png)
+![Hitting Skeleton](data/output/skeleton_hitting_anim.gif)
 
 > I contributed a bug fix to ezc3d ([PR #384](https://github.com/pyomeca/ezc3d/pull/384)) — fixing an `__eq__` early return bug — and then used the library for this analysis.
 
