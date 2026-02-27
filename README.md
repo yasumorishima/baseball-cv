@@ -74,6 +74,10 @@ These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) an
 | Pitch Speed | 88.9 mph | 80.9 mph |
 | Knee Ext Velocity | 769 deg/s | -12 deg/s |
 
+**Knee extension detail** — zoomed 2D view with real-time angle & velocity annotations:
+
+![Knee Detail](data/output/llb_knee_detail.gif)
+
 **LLB metrics by speed quartile** — do faster pitchers block harder?
 
 ![LLB Profile](data/output/llb_profile_pitching.png)
