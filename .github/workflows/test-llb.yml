@@ -45,8 +45,8 @@ jobs:
           print('PASS: Hitting sample processed (features may be empty if no foot strike detected)')
           "
 
-      - name: Pipeline test - pitching correlation (5 samples)
-        run: python statcast_correlation.py --mode pitching --download 5
+      - name: Full pipeline - pitching correlation (40 samples)
+        run: python statcast_correlation.py --mode pitching --download 40
 
       - name: Upload output artifacts
         uses: actions/upload-artifact@v4
