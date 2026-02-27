@@ -58,9 +58,36 @@ def collect_llb_candidates(n_samples=40):
     return results
 
 
-def to_side_view(pt3d):
-    """Project 3D marker to 2D side view (Y=forward, Z=up)."""
-    return np.array([pt3d[1], pt3d[2]])
+def compute_leg_plane(markers, frame, side="L"):
+    """Find the best 2D projection plane for hip-knee-ankle using SVD.
+
+    Returns a projection function that maps 3D points onto the plane
+    that shows the most spread of the leg markers (optimal side view).
+    """
+    hip = markers.get(f"{side}ASI")
+    knee = markers.get(f"{side}KNE")
+    ankle = markers.get(f"{side}ANK")
+    if hip is None or knee is None or ankle is None:
+        return None
+
+    pts = np.array([hip[:, frame], knee[:, frame], ankle[:, frame]])
+    centroid = np.mean(pts, axis=0)
+    centered = pts - centroid
+
+    # SVD: first 2 principal components define the leg plane
+    _, _, Vt = np.linalg.svd(centered)
+    axis1 = Vt[0]  # most variance
+    axis2 = Vt[1]  # second most variance
+
+    # Ensure Z component of axis2 is positive (up = up on screen)
+    if axis2[2] < 0:
+        axis2 = -axis2
+
+    def project(pt3d):
+        d = pt3d - centroid
+        return np.array([np.dot(d, axis1), np.dot(d, axis2)])
+
+    return project
 
 
 def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, output_path):
@@ -109,12 +136,15 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     ax_graph = fig.add_axes([0.08, 0.05, 0.84, 0.24])
 
     def get_leg_pts(markers, frame):
-        """Get hip, knee, ankle 2D points for a frame."""
+        """Get hip, knee, ankle 2D points using optimal leg plane projection."""
+        proj = compute_leg_plane(markers, frame, side="L")
+        if proj is None:
+            return {}
         pts = {}
         for name in ("LASI", "LKNE", "LANK", "LHEE", "LTOE"):
             m = markers.get(name)
             if m is not None:
-                pts[name] = to_side_view(m[:, frame])
+                pts[name] = proj(m[:, frame])
         return pts
 
     def draw_leg_panel(ax, markers, frame, knee_angle, knee_vel,
