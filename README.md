@@ -65,6 +65,15 @@ The Lead Leg Block (LLB) module detects foot strike from heel marker trajectory,
 
 These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) and correlated with pitch speed (scatter plots updated in Step 4 above).
 
+**Strong vs Weak Lead Leg Block** — skeleton animation comparison (lead leg in red):
+
+![LLB Comparison](data/output/llb_comparison.gif)
+
+| | Strong Block | Weak Block |
+|---|---|---|
+| Pitch Speed | 88.9 mph | 80.9 mph |
+| Knee Ext Velocity | 769 deg/s | -12 deg/s |
+
 **LLB metrics by speed quartile** — do faster pitchers block harder?
 
 ![LLB Profile](data/output/llb_profile_pitching.png)
