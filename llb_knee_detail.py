@@ -1,8 +1,8 @@
 """Lead Leg Block — Knee extension detail GIF with annotations.
 
-Generates a zoomed-in 2D side-view GIF focusing on the lead leg,
-showing real-time knee angle, angular velocity, and visual angle arc.
-Side-by-side comparison of strong vs weak lead leg block.
+Draws a schematic leg diagram based on actual knee angle measurements,
+avoiding coordinate-system issues with raw marker projection.
+Side-by-side strong vs weak comparison with time-series graph.
 
 Usage:
     python llb_knee_detail.py --download 40
@@ -14,10 +14,10 @@ Output:
 import argparse
 from pathlib import Path
 
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
+from matplotlib.patches import Arc
 
 from skeleton_analysis import (
     compute_angular_velocity,
@@ -29,6 +29,10 @@ from statcast_correlation import download_additional_samples, parse_pitching_fil
 
 OUTPUT_DIR = Path("data/output")
 RAW_DIR = Path("data/raw")
+
+# Schematic leg dimensions (arbitrary units for diagram)
+THIGH_LEN = 1.0
+SHIN_LEN = 0.95
 
 
 def collect_llb_candidates(n_samples=40):
@@ -58,36 +62,30 @@ def collect_llb_candidates(n_samples=40):
     return results
 
 
-def compute_leg_plane(markers, frame, side="L"):
-    """Find the best 2D projection plane for hip-knee-ankle using SVD.
+def knee_angle_to_leg_points(angle_deg):
+    """Convert knee angle to schematic leg coordinates.
 
-    Returns a projection function that maps 3D points onto the plane
-    that shows the most spread of the leg markers (optimal side view).
+    Returns hip, knee, ankle positions for a diagram where:
+    - Hip is at top
+    - Thigh goes down-right
+    - Shin angle relative to thigh is the measured knee angle
+    - 180° = fully straight, <180° = bent
+
+    Returns (hip, knee, ankle) as 2D points.
     """
-    hip = markers.get(f"{side}ASI")
-    knee = markers.get(f"{side}KNE")
-    ankle = markers.get(f"{side}ANK")
-    if hip is None or knee is None or ankle is None:
-        return None
+    # Thigh direction: slightly angled forward (down-right)
+    thigh_angle_rad = np.radians(-80)  # near-vertical, slight forward lean
+    hip = np.array([0.0, 2.0])
+    knee = hip + THIGH_LEN * np.array([np.cos(thigh_angle_rad), np.sin(thigh_angle_rad)])
 
-    pts = np.array([hip[:, frame], knee[:, frame], ankle[:, frame]])
-    centroid = np.mean(pts, axis=0)
-    centered = pts - centroid
+    # Shin direction: rotated from thigh by (180 - knee_angle) toward the front
+    # When knee_angle=180, shin is straight extension of thigh
+    # When knee_angle<180, shin bends forward
+    bend_rad = np.radians(180 - angle_deg)
+    shin_angle_rad = thigh_angle_rad + bend_rad
+    ankle = knee + SHIN_LEN * np.array([np.cos(shin_angle_rad), np.sin(shin_angle_rad)])
 
-    # SVD: first 2 principal components define the leg plane
-    _, _, Vt = np.linalg.svd(centered)
-    axis1 = Vt[0]  # most variance
-    axis2 = Vt[1]  # second most variance
-
-    # Ensure Z component of axis2 is positive (up = up on screen)
-    if axis2[2] < 0:
-        axis2 = -axis2
-
-    def project(pt3d):
-        d = pt3d - centroid
-        return np.array([np.dot(d, axis1), np.dot(d, axis2)])
-
-    return project
+    return hip, knee, ankle
 
 
 def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, output_path):
@@ -98,13 +96,13 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     fs_s = strong_meta["llb_foot_strike_frame"]
     fs_w = weak_meta["llb_foot_strike_frame"]
 
-    # Compute full knee angle & velocity time series
+    # Knee angles & velocities
     knee_s = compute_knee_flexion(markers_s, "L")
     knee_w = compute_knee_flexion(markers_w, "L")
     vel_s = compute_angular_velocity(knee_s, rate_s)
     vel_w = compute_angular_velocity(knee_w, rate_w)
 
-    # Time-aligned window: 0.3s before → 0.5s after foot strike
+    # Time window: 0.3s before → 0.5s after foot strike
     pre_sec = 0.3
     post_sec = 0.5
     total_sec = pre_sec + post_sec
@@ -119,172 +117,144 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     idx_w = np.linspace(start_w, end_w - 1, n_anim).astype(int)
     fs_gif = int(pre_sec / total_sec * n_anim)
 
-    # Precompute graph data (time relative to foot strike)
+    # Graph data
     graph_time_s = (np.arange(start_s, end_s) - fs_s) / rate_s
     graph_time_w = (np.arange(start_w, end_w) - fs_w) / rate_w
     graph_knee_s = knee_s[start_s:end_s]
     graph_knee_w = knee_w[start_w:end_w]
-
-    # Map GIF frame → graph index
     graph_idx_s = np.linspace(0, len(graph_knee_s) - 1, n_anim).astype(int)
     graph_idx_w = np.linspace(0, len(graph_knee_w) - 1, n_anim).astype(int)
 
-    # Figure layout
-    fig = plt.figure(figsize=(16, 9))
-    ax_leg_s = fig.add_axes([0.02, 0.32, 0.46, 0.62])
-    ax_leg_w = fig.add_axes([0.52, 0.32, 0.46, 0.62])
-    ax_graph = fig.add_axes([0.08, 0.05, 0.84, 0.24])
+    # Figure
+    fig = plt.figure(figsize=(16, 10))
+    ax_s = fig.add_axes([0.02, 0.33, 0.46, 0.60])
+    ax_w = fig.add_axes([0.52, 0.33, 0.46, 0.60])
+    ax_g = fig.add_axes([0.08, 0.05, 0.84, 0.25])
 
-    def get_leg_pts(markers, frame):
-        """Get hip, knee, ankle 2D points using optimal leg plane projection."""
-        proj = compute_leg_plane(markers, frame, side="L")
-        if proj is None:
-            return {}
-        pts = {}
-        for name in ("LASI", "LKNE", "LANK", "LHEE", "LTOE"):
-            m = markers.get(name)
-            if m is not None:
-                pts[name] = proj(m[:, frame])
-        return pts
-
-    def draw_leg_panel(ax, markers, frame, knee_angle, knee_vel,
-                       title, color, speed_mph, is_fs, is_post_fs, is_strong):
+    def draw_leg_diagram(ax, angle_deg, knee_vel, title, color, speed_mph,
+                         is_fs, is_post_fs, is_strong):
         ax.clear()
-        pts = get_leg_pts(markers, frame)
 
-        if "LASI" not in pts or "LKNE" not in pts or "LANK" not in pts:
-            ax.text(0.5, 0.5, "Markers missing", transform=ax.transAxes, ha="center")
-            return
+        hip, knee, ankle = knee_angle_to_leg_points(angle_deg)
 
-        hip = pts["LASI"]
-        knee = pts["LKNE"]
-        ankle = pts["LANK"]
+        # Ground line
+        ground_y = ankle[1] - 0.15
+        ax.axhline(ground_y, color="#bdc3c7", linewidth=2, linestyle="-", zorder=0)
+        ax.fill_between([-1.5, 1.5], ground_y - 0.3, ground_y,
+                         color="#ecf0f1", alpha=0.5, zorder=0)
 
-        # Thigh (hip → knee): dark gray
+        # Thigh (gray)
         ax.plot([hip[0], knee[0]], [hip[1], knee[1]],
-                color="#555555", linewidth=8, solid_capstyle="round", zorder=2)
-        # Shin (knee → ankle): red
+                color="#555555", linewidth=12, solid_capstyle="round", zorder=2)
+        # Shin (red)
         ax.plot([knee[0], ankle[0]], [knee[1], ankle[1]],
+                color="#e74c3c", linewidth=12, solid_capstyle="round", zorder=2)
+
+        # Foot stub
+        foot_dir = np.array([0.3, -0.05])
+        foot_end = ankle + foot_dir
+        ax.plot([ankle[0], foot_end[0]], [ankle[1], foot_end[1]],
                 color="#e74c3c", linewidth=8, solid_capstyle="round", zorder=2)
 
-        # Foot segments
-        if "LHEE" in pts:
-            heel = pts["LHEE"]
-            ax.plot([ankle[0], heel[0]], [ankle[1], heel[1]],
-                    color="#e74c3c", linewidth=5, solid_capstyle="round", zorder=2)
-        if "LTOE" in pts:
-            toe = pts["LTOE"]
-            ax.plot([ankle[0], toe[0]], [ankle[1], toe[1]],
-                    color="#e74c3c", linewidth=5, solid_capstyle="round", zorder=2)
+        # Joint circles
+        ax.scatter(*hip, s=250, c="#555555", zorder=3, edgecolors="black", linewidths=2)
+        ax.scatter(*knee, s=350, c=color, zorder=3, edgecolors="black", linewidths=2)
+        ax.scatter(*ankle, s=250, c="#e74c3c", zorder=3, edgecolors="black", linewidths=2)
 
-        # Joint dots
-        ax.scatter(*hip, s=120, c="#555555", zorder=3, edgecolors="black", linewidths=1.5)
-        ax.scatter(*knee, s=160, c=color, zorder=3, edgecolors="black", linewidths=1.5)
-        ax.scatter(*ankle, s=120, c="#e74c3c", zorder=3, edgecolors="black", linewidths=1.5)
+        # Labels
+        ax.annotate("Hip", hip, xytext=(-0.35, 0.08), fontsize=11,
+                     fontweight="bold", color="#555555")
+        ax.annotate("Knee", knee, xytext=(0.12, 0.05), fontsize=11,
+                     fontweight="bold", color=color)
+        ax.annotate("Ankle", ankle, xytext=(0.12, -0.05), fontsize=11,
+                     fontweight="bold", color="#e74c3c")
 
-        # Joint labels
-        ax.annotate("Hip", hip, textcoords="offset points", xytext=(-25, 10),
-                     fontsize=9, color="#555555", fontweight="bold")
-        ax.annotate("Knee", knee, textcoords="offset points", xytext=(10, -15),
-                     fontsize=9, color=color, fontweight="bold")
-        ax.annotate("Ankle", ankle, textcoords="offset points", xytext=(10, -15),
-                     fontsize=9, color="#e74c3c", fontweight="bold")
-
-        # Angle arc at knee — radius proportional to thigh length
-        thigh_len = np.linalg.norm(hip - knee)
-        arc_radius = thigh_len * 0.3
+        # Angle arc at knee
         v_thigh = hip - knee
         v_shin = ankle - knee
         ang_thigh = np.degrees(np.arctan2(v_thigh[1], v_thigh[0]))
         ang_shin = np.degrees(np.arctan2(v_shin[1], v_shin[0]))
         theta1, theta2 = sorted([ang_thigh, ang_shin])
-        arc = patches.Arc(knee, arc_radius * 2, arc_radius * 2,
-                          angle=0, theta1=theta1, theta2=theta2,
-                          color=color, linewidth=2.5, linestyle="--", zorder=4)
+        arc = Arc(knee, 0.5, 0.5, angle=0, theta1=theta1, theta2=theta2,
+                  color=color, linewidth=3, linestyle="--", zorder=4)
         ax.add_patch(arc)
 
+        # Angle value near arc
+        mid_angle = np.radians((theta1 + theta2) / 2)
+        label_pos = knee + 0.35 * np.array([np.cos(mid_angle), np.sin(mid_angle)])
+        ax.text(label_pos[0], label_pos[1], f"{angle_deg:.0f}\u00b0",
+                fontsize=14, fontweight="bold", color=color, ha="center", va="center",
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                          edgecolor=color, alpha=0.9))
+
         # Title
-        ax.set_title(f"{title}  ({speed_mph:.1f} mph)", fontsize=15,
-                     fontweight="bold", color=color, pad=10)
+        ax.set_title(f"{title}  ({speed_mph:.1f} mph)", fontsize=16,
+                     fontweight="bold", color=color, pad=12)
 
         # Knee angle box
-        ax.text(0.05, 0.93, f"Knee Angle: {knee_angle:.1f}\u00b0",
-                transform=ax.transAxes, fontsize=17, fontweight="bold",
+        ax.text(0.05, 0.93, f"Knee Angle: {angle_deg:.1f}\u00b0",
+                transform=ax.transAxes, fontsize=18, fontweight="bold",
                 color="#2c3e50",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
                           edgecolor="#2c3e50", alpha=0.95))
 
         # Velocity box
         vel_color = "#27ae60" if knee_vel > 0 else "#c0392b"
-        vel_arrow = "\u2191 extending" if knee_vel > 0 else "\u2193 flexing"
-        ax.text(0.05, 0.80, f"Velocity: {abs(knee_vel):.0f} \u00b0/s {vel_arrow}",
-                transform=ax.transAxes, fontsize=14, fontweight="bold",
+        vel_label = "\u2191 extending" if knee_vel > 0 else "\u2193 flexing"
+        ax.text(0.05, 0.80, f"Velocity: {abs(knee_vel):.0f} \u00b0/s {vel_label}",
+                transform=ax.transAxes, fontsize=15, fontweight="bold",
                 color=vel_color,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                bbox=dict(boxstyle="round,pad=0.4", facecolor="white",
                           edgecolor=vel_color, alpha=0.95))
 
         # Phase label
         if is_fs:
-            ax.text(0.5, 0.05, "\u26a1 FOOT STRIKE \u26a1", transform=ax.transAxes,
+            ax.text(0.5, 0.03, "\u26a1 FOOT STRIKE \u26a1", transform=ax.transAxes,
                     fontsize=18, fontweight="bold", color="white", ha="center",
                     bbox=dict(boxstyle="round,pad=0.5", facecolor="#e74c3c", alpha=0.95))
 
-        # Explanation (post foot strike only)
+        # Explanation
         if is_post_fs and is_strong:
-            ax.text(0.95, 0.15,
-                    "Knee snaps straight\n\u2192 energy transfers\n   to upper body",
-                    transform=ax.transAxes, fontsize=11, ha="right",
+            ax.text(0.95, 0.55,
+                    "Knee snaps straight\n\u2192 energy transfers\n   to upper body \u2191",
+                    transform=ax.transAxes, fontsize=12, ha="right",
                     color="#27ae60", fontweight="bold",
                     bbox=dict(boxstyle="round,pad=0.4", facecolor="#eafaf1",
                               edgecolor="#27ae60", alpha=0.95))
         elif is_post_fs and not is_strong:
-            ax.text(0.95, 0.15,
-                    "Knee stays bent\n\u2192 energy absorbed\n   by the leg",
-                    transform=ax.transAxes, fontsize=11, ha="right",
+            ax.text(0.95, 0.55,
+                    "Knee stays bent\n\u2192 energy absorbed\n   by the leg \u2193",
+                    transform=ax.transAxes, fontsize=12, ha="right",
                     color="#c0392b", fontweight="bold",
                     bbox=dict(boxstyle="round,pad=0.4", facecolor="#fdedec",
                               edgecolor="#c0392b", alpha=0.95))
 
-        # Auto-scale to leg area with padding
-        all_pts = np.array([hip, knee, ankle])
-        if "LHEE" in pts:
-            all_pts = np.vstack([all_pts, pts["LHEE"]])
-        if "LTOE" in pts:
-            all_pts = np.vstack([all_pts, pts["LTOE"]])
-        cx = np.mean(all_pts[:, 0])
-        cy = np.mean(all_pts[:, 1])
-        span = max(np.ptp(all_pts[:, 0]), np.ptp(all_pts[:, 1])) * 0.75 + 80
-        ax.set_xlim(cx - span, cx + span)
-        ax.set_ylim(cy - span, cy + span)
+        ax.set_xlim(-1.2, 1.5)
+        ax.set_ylim(-0.3, 2.3)
         ax.set_aspect("equal")
         ax.axis("off")
 
-    def draw_graph(ax, anim_frame):
+    def draw_graph(ax, frame_num):
         ax.clear()
-
-        # Plot both knee angle curves
         ax.plot(graph_time_s, graph_knee_s, color="#2980b9", linewidth=2.5,
                 label="Strong Block", zorder=2)
         ax.plot(graph_time_w, graph_knee_w, color="#e67e22", linewidth=2.5,
                 label="Weak Block", zorder=2)
-
-        # Foot strike vertical line
         ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--",
                    alpha=0.7, label="Foot Strike", zorder=1)
 
-        # Current position dots (synced to animation frame)
-        gi_s = graph_idx_s[anim_frame]
-        gi_w = graph_idx_w[anim_frame]
+        gi_s = graph_idx_s[frame_num]
+        gi_w = graph_idx_w[frame_num]
         ax.scatter(graph_time_s[gi_s], graph_knee_s[gi_s],
-                   s=120, c="#2980b9", zorder=5, edgecolors="black", linewidths=1.5)
+                   s=150, c="#2980b9", zorder=5, edgecolors="black", linewidths=2)
         ax.scatter(graph_time_w[gi_w], graph_knee_w[gi_w],
-                   s=120, c="#e67e22", zorder=5, edgecolors="black", linewidths=1.5)
+                   s=150, c="#e67e22", zorder=5, edgecolors="black", linewidths=2)
 
-        ax.set_xlabel("Time from Foot Strike (s)", fontsize=11)
-        ax.set_ylabel("Knee Angle (\u00b0)", fontsize=11)
+        ax.set_xlabel("Time from Foot Strike (s)", fontsize=12)
+        ax.set_ylabel("Knee Angle (\u00b0)", fontsize=12)
         ax.set_title("Knee Angle Over Time \u2014 higher = straighter leg",
-                      fontsize=11, color="#2c3e50", fontweight="bold")
-        ax.legend(loc="lower right", fontsize=9)
+                      fontsize=12, color="#2c3e50", fontweight="bold")
+        ax.legend(loc="lower right", fontsize=10)
         ax.grid(True, alpha=0.3)
         ax.set_xlim(-pre_sec - 0.02, post_sec + 0.02)
 
@@ -300,16 +270,15 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
         is_fs = abs(frame_num - fs_gif) <= 1
         is_post_fs = frame_num > fs_gif + 3
 
-        draw_leg_panel(ax_leg_s, markers_s, fi_s, angle_s, v_s,
-                       "Strong Block", "#2980b9", strong_meta["pitch_speed_mph"],
-                       is_fs, is_post_fs, True)
-        draw_leg_panel(ax_leg_w, markers_w, fi_w, angle_w, v_w,
-                       "Weak Block", "#e67e22", weak_meta["pitch_speed_mph"],
-                       is_fs, is_post_fs, False)
-        draw_graph(ax_graph, frame_num)
+        draw_leg_diagram(ax_s, angle_s, v_s, "Strong Block", "#2980b9",
+                         strong_meta["pitch_speed_mph"], is_fs, is_post_fs, True)
+        draw_leg_diagram(ax_w, angle_w, v_w, "Weak Block", "#e67e22",
+                         weak_meta["pitch_speed_mph"], is_fs, is_post_fs, False)
+        draw_graph(ax_g, frame_num)
 
         fig.suptitle("Lead Leg Block \u2014 Knee Extension Detail\n"
-                     "Gray = thigh \u2502 Red = shin & foot",
+                     "Gray = thigh \u2502 Red = shin & foot  "
+                     "\u2502  180\u00b0 = fully straight",
                      fontsize=14, fontweight="bold", y=0.99)
 
     print("  Rendering animation...")
