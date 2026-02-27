@@ -51,6 +51,9 @@ jobs:
       - name: Generate LLB comparison GIF
         run: python llb_comparison.py --download 40
 
+      - name: Generate LLB knee detail GIF
+        run: python llb_knee_detail.py --download 40
+
       - name: Upload output artifacts
         uses: actions/upload-artifact@v4
         if: always()
