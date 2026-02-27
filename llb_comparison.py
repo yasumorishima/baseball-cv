@@ -92,32 +92,29 @@ def create_comparison_gif(strong_file, weak_file, strong_meta, weak_meta, output
     fs_s = strong_meta["llb_foot_strike_frame"]
     fs_w = weak_meta["llb_foot_strike_frame"]
 
-    # Align animations around foot strike: show from 30% before to 30% after
-    def get_window(n_frames, fs_frame):
-        pre = int(n_frames * 0.30)
-        post = int(n_frames * 0.30)
-        start = max(0, fs_frame - pre)
-        end = min(n_frames, fs_frame + post)
-        return start, end, fs_frame - start
+    # Align both animations on foot strike using absolute time windows.
+    # Show 0.5s before foot strike and 0.4s after — same real-time duration
+    # so both pitchers are at the same phase at the same GIF frame.
+    pre_sec = 0.5
+    post_sec = 0.4
 
-    start_s, end_s, fs_rel_s = get_window(n_s, fs_s)
-    start_w, end_w, fs_rel_w = get_window(n_w, fs_w)
+    pre_s = int(pre_sec * rate_s)
+    post_s = int(post_sec * rate_s)
+    start_s = max(0, fs_s - pre_s)
+    end_s = min(n_s, fs_s + post_s)
 
-    max_frames = 120
-    frames_s = list(range(start_s, end_s))
-    frames_w = list(range(start_w, end_w))
+    pre_w = int(pre_sec * rate_w)
+    post_w = int(post_sec * rate_w)
+    start_w = max(0, fs_w - pre_w)
+    end_w = min(n_w, fs_w + post_w)
 
-    # Subsample to equal length
-    n_anim = min(len(frames_s), len(frames_w), max_frames)
-    step_s = max(1, len(frames_s) // n_anim)
-    step_w = max(1, len(frames_w) // n_anim)
-    frames_s = frames_s[::step_s][:n_anim]
-    frames_w = frames_w[::step_w][:n_anim]
+    # Interpolate both to exactly the same number of GIF frames
+    n_anim = 108  # 0.9s × 12fps = ~108 frames at GIF playback speed
+    frames_s = np.linspace(start_s, end_s - 1, n_anim).astype(int)
+    frames_w = np.linspace(start_w, end_w - 1, n_anim).astype(int)
 
-    # Ensure same number of frames
-    n_anim = min(len(frames_s), len(frames_w))
-    frames_s = frames_s[:n_anim]
-    frames_w = frames_w[:n_anim]
+    # Foot strike GIF frame (same for both due to time alignment)
+    fs_gif_frame = int(pre_sec / (pre_sec + post_sec) * n_anim)
 
     fig, (ax_strong, ax_weak) = plt.subplots(1, 2, figsize=(16, 8),
                                               subplot_kw={"projection": "3d"})
@@ -179,21 +176,16 @@ def create_comparison_gif(strong_file, weak_file, strong_meta, weak_meta, output
         ax.set_title(f"{title_prefix} ({speed:.1f} mph){fs_marker}", fontsize=11)
         ax.view_init(elev=20, azim=45)
 
-    # Map animation frame to foot strike detection
-    fs_anim_s = min(range(n_anim), key=lambda i: abs(frames_s[i] - fs_s))
-    fs_anim_w = min(range(n_anim), key=lambda i: abs(frames_w[i] - fs_w))
-
     def update(frame_num):
         fi_s = frames_s[frame_num]
         fi_w = frames_w[frame_num]
 
-        is_fs_s = abs(frame_num - fs_anim_s) <= 1
-        is_fs_w = abs(frame_num - fs_anim_w) <= 1
+        is_fs = abs(frame_num - fs_gif_frame) <= 1
 
         draw_skeleton(ax_strong, labels_s, points_s, fi_s, bounds_s,
-                      is_fs_s, "Strong Block", strong_meta)
+                      is_fs, "Strong Block", strong_meta)
         draw_skeleton(ax_weak, labels_w, points_w, fi_w, bounds_w,
-                      is_fs_w, "Weak Block", weak_meta)
+                      is_fs, "Weak Block", weak_meta)
 
         fig.suptitle("Lead Leg Block Comparison — Driveline OBP\n"
                      "Red = Lead Leg", fontsize=13, y=0.98)
