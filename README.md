@@ -10,6 +10,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
 | 4 | `statcast_correlation.py` | Skeleton features × pitch speed / exit velocity correlation |
+| 5 | `statcast_correlation.py` | Lead Leg Block analysis — foot strike detection, ankle braking & knee extension vs speed |
 
 ## Results
 
@@ -54,6 +55,22 @@ Correlation between biomechanical features and pitch speed / exit velocity acros
 
 ![Scatter](data/output/scatter_pitching.png)
 
+### Step 5: Lead Leg Block Analysis
+
+**Hypothesis**: Pitchers who "block" their lead leg more effectively at foot strike transfer more energy up the kinetic chain → higher pitch speed.
+
+The Lead Leg Block (LLB) module detects foot strike from heel marker trajectory, then measures:
+- **Ankle braking**: horizontal velocity change at foot strike (how hard the front foot "plants")
+- **Knee extension velocity**: how quickly the lead knee straightens after ground contact
+
+These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) and correlated with pitch speed (scatter plots updated in Step 4 above).
+
+**LLB metrics by speed quartile** — do faster pitchers block harder?
+
+![LLB Profile](data/output/llb_profile_pitching.png)
+
+> The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
+
 ## Setup
 
 ```bash
@@ -88,8 +105,8 @@ python skeleton_video.py --input data/videos/batting.mp4
 python skeleton_analysis.py --mode pitching
 python skeleton_analysis.py --mode hitting
 
-# Step 4: Correlation analysis (downloads additional C3D files)
-python statcast_correlation.py --mode pitching --download 15
+# Step 4-5: Correlation + Lead Leg Block analysis (downloads additional C3D files)
+python statcast_correlation.py --mode pitching --download 40
 ```
 
 ## Data Sources & Credits
