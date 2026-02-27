@@ -127,9 +127,9 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
 
     # Figure
     fig = plt.figure(figsize=(16, 10))
-    ax_s = fig.add_axes([0.02, 0.33, 0.46, 0.60])
-    ax_w = fig.add_axes([0.52, 0.33, 0.46, 0.60])
-    ax_g = fig.add_axes([0.08, 0.05, 0.84, 0.25])
+    ax_s = fig.add_axes([0.02, 0.30, 0.46, 0.58])
+    ax_w = fig.add_axes([0.52, 0.30, 0.46, 0.58])
+    ax_g = fig.add_axes([0.08, 0.04, 0.84, 0.23])
 
     def draw_leg_diagram(ax, angle_deg, knee_vel, title, color, speed_mph,
                          is_fs, is_post_fs, is_strong):
@@ -276,10 +276,9 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
                          weak_meta["pitch_speed_mph"], is_fs, is_post_fs, False)
         draw_graph(ax_g, frame_num)
 
-        fig.suptitle("Lead Leg Block \u2014 Knee Extension Detail\n"
-                     "Gray = thigh \u2502 Red = shin & foot  "
-                     "\u2502  180\u00b0 = fully straight",
-                     fontsize=14, fontweight="bold", y=0.99)
+        fig.suptitle("Lead Leg Block \u2014 Knee Extension Detail   "
+                     "(Gray = thigh | Red = shin | 180\u00b0 = straight)",
+                     fontsize=13, fontweight="bold", y=1.0)
 
     print("  Rendering animation...")
     anim = animation.FuncAnimation(fig, update, frames=n_anim, interval=80)
