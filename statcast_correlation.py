@@ -28,6 +28,7 @@ from skeleton_analysis import (
     compute_angular_velocity,
     compute_elbow_flexion,
     compute_knee_flexion,
+    compute_lead_leg_block_features,
     compute_shoulder_abduction,
     compute_trunk_rotation,
     load_c3d,
@@ -114,6 +115,10 @@ def extract_peak_features(markers, rate, mode="pitching"):
     if knee is not None:
         features["peak_knee_flexion"] = np.nanmax(knee)
         features["min_knee_flexion"] = np.nanmin(knee)
+
+    # Lead leg block features
+    llb = compute_lead_leg_block_features(markers, rate, side=lead_side)
+    features.update(llb)
 
     return features
 
@@ -282,6 +287,8 @@ def plot_scatter(df, mode, output_dir):
         ("peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
         ("peak_shoulder_abduction", "Peak Shoulder Abduction (deg)"),
         ("trunk_rotation_range", "Trunk Rotation Range (deg)"),
+        ("llb_ankle_velocity_delta", "Ankle Braking \u0394V (mm/s)"),
+        ("llb_knee_ext_peak_velocity", "Lead Knee Ext Velocity (deg/s)"),
     ]
 
     available = [(col, label) for col, label in feature_pairs if col in df.columns]
@@ -290,9 +297,17 @@ def plot_scatter(df, mode, output_dir):
         return
 
     n_plots = len(available)
-    fig, axes = plt.subplots(1, n_plots, figsize=(5 * n_plots, 5))
+    n_cols = min(4, n_plots)
+    n_rows = (n_plots + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 5 * n_rows))
     if n_plots == 1:
         axes = [axes]
+    else:
+        axes = np.array(axes).flatten()
+
+    # Hide unused subplots
+    for idx in range(n_plots, len(axes)):
+        axes[idx].set_visible(False)
 
     for ax, (col, label) in zip(axes, available):
         valid = df[[speed_key, col]].dropna()
@@ -324,10 +339,64 @@ def plot_scatter(df, mode, output_dir):
     print(f"  Scatter plots: {path}")
 
 
+def plot_lead_leg_block_profile(df, mode, output_dir):
+    """Plot LLB metrics by speed quartile — bar chart showing faster = stronger block."""
+    speed_key = "pitch_speed_mph" if mode == "pitching" else "exit_velocity_mph"
+
+    if speed_key not in df.columns or df[speed_key].isna().all():
+        print("  No speed data available for LLB profile")
+        return
+
+    llb_cols = [c for c in df.columns if c.startswith("llb_") and c not in (
+        "llb_foot_strike_frame", "llb_foot_strike_time_s",
+    )]
+    available = [c for c in llb_cols if c in df.columns and df[c].notna().sum() >= 4]
+    if not available:
+        print("  Not enough LLB data for quartile profile")
+        return
+
+    # Create speed quartiles
+    valid = df.dropna(subset=[speed_key])
+    valid = valid.copy()
+    valid["speed_quartile"] = pd.qcut(valid[speed_key], q=4, labels=["Q1\n(slowest)", "Q2", "Q3", "Q4\n(fastest)"])
+
+    n_metrics = len(available)
+    fig, axes = plt.subplots(1, n_metrics, figsize=(5 * n_metrics, 5))
+    if n_metrics == 1:
+        axes = [axes]
+
+    colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c"]
+
+    for ax, col in zip(axes, available):
+        grouped = valid.groupby("speed_quartile", observed=True)[col].mean()
+        bars = ax.bar(range(len(grouped)), grouped.values, color=colors[:len(grouped)],
+                      edgecolor="black", linewidth=0.5)
+        ax.set_xticks(range(len(grouped)))
+        ax.set_xticklabels(grouped.index, fontsize=9)
+        ax.set_ylabel(col.replace("llb_", "").replace("_", " ").title())
+        ax.set_title(col.replace("llb_", "").replace("_", " ").title())
+        ax.grid(True, alpha=0.3, axis="y")
+
+        # Add value labels on bars
+        for bar, val in zip(bars, grouped.values):
+            if not np.isnan(val):
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                        f"{val:.0f}", ha="center", va="bottom", fontsize=8)
+
+    speed_label = "Pitch Speed" if mode == "pitching" else "Exit Velocity"
+    fig.suptitle(f"Lead Leg Block Metrics by {speed_label} Quartile — Driveline OBP", fontsize=13)
+    plt.tight_layout()
+
+    path = output_dir / f"llb_profile_{mode}.png"
+    fig.savefig(str(path), dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  LLB profile: {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Skeleton features × Statcast correlation")
     parser.add_argument("--mode", choices=["pitching", "hitting", "both"], default="pitching")
-    parser.add_argument("--download", type=int, default=15,
+    parser.add_argument("--download", type=int, default=40,
                         help="Number of additional C3D files to download for correlation")
     args = parser.parse_args()
 
@@ -366,6 +435,7 @@ def main():
         # Correlation analysis
         plot_correlation_matrix(df, mode, OUTPUT_DIR)
         plot_scatter(df, mode, OUTPUT_DIR)
+        plot_lead_leg_block_profile(df, mode, OUTPUT_DIR)
 
     print("\nDone!")
 

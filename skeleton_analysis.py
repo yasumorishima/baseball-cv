@@ -117,6 +117,215 @@ def compute_angular_velocity(angles, rate):
     return vel
 
 
+def detect_foot_strike(markers, side="L", rate=360.0):
+    """Detect foot strike frame from heel marker vertical trajectory.
+
+    Finds the frame where the lead foot contacts the ground by detecting
+    the transition from downward heel motion to near-zero vertical velocity.
+
+    Returns:
+        Frame index of foot strike, or None if detection fails.
+    """
+    heel_key = f"{side}HEE"
+    heel = markers.get(heel_key)
+    if heel is None:
+        return None
+
+    heel_z = heel[2, :]  # vertical position
+    n_frames = len(heel_z)
+
+    # Vertical velocity (mm/s)
+    heel_vz = np.gradient(heel_z) * rate
+
+    # Smooth with 5-frame moving average
+    kernel = np.ones(5) / 5
+    heel_vz_smooth = np.convolve(heel_vz, kernel, mode="same")
+
+    # Find leg lift peak (highest heel Z after start)
+    # Skip first 10% of frames to avoid initial pose
+    start = n_frames // 10
+    lift_peak = start + np.argmax(heel_z[start:])
+
+    # After lift peak, find where vz goes from negative to near-zero
+    # (heel descending then stopping = ground contact)
+    min_heel_z = np.min(heel_z[lift_peak:])
+    heel_z_range = np.max(heel_z[lift_peak:]) - min_heel_z
+    threshold_z = min_heel_z + heel_z_range * 0.10
+
+    for i in range(lift_peak + 1, n_frames - 1):
+        # Velocity was negative (descending) and is now near zero
+        if heel_vz_smooth[i - 1] < 0 and abs(heel_vz_smooth[i]) < abs(heel_vz_smooth[lift_peak]) * 0.1:
+            # Confirm heel is near its minimum (within 10% of range)
+            if heel_z[i] <= threshold_z:
+                return i
+
+    return None
+
+
+def infer_throwing_direction(markers):
+    """Infer throwing/swinging direction as a 2D unit vector in the horizontal plane.
+
+    Uses the RFIN (right fingertip) marker trajectory to estimate direction.
+    Falls back to LFIN if RFIN is not available.
+
+    Returns:
+        (2,) unit vector in XY plane, or None.
+    """
+    for key in ("RFIN", "LFIN"):
+        fin = markers.get(key)
+        if fin is not None:
+            break
+    else:
+        return None
+
+    fin_xy = fin[:2, :]  # (2, n_frames)
+
+    # Horizontal velocity
+    vx = np.gradient(fin_xy[0, :])
+    vy = np.gradient(fin_xy[1, :])
+    speed = np.sqrt(vx**2 + vy**2)
+
+    # Peak speed frame (near release/contact)
+    peak_frame = np.argmax(speed)
+
+    # Displacement vector around peak (±10 frames)
+    window = 10
+    f_start = max(0, peak_frame - window)
+    f_end = min(fin_xy.shape[1] - 1, peak_frame + window)
+    disp = fin_xy[:, f_end] - fin_xy[:, f_start]
+
+    norm = np.linalg.norm(disp)
+    if norm < 1e-6:
+        return None
+    return disp / norm
+
+
+def compute_ankle_braking(markers, foot_strike_frame, rate, throwing_dir, side="L"):
+    """Compute ankle braking metrics at foot strike.
+
+    Measures the horizontal velocity change of the ankle marker
+    around the foot strike event to quantify the lead leg block.
+
+    Returns:
+        dict with braking metrics, or None if markers missing.
+    """
+    ank_key = f"{side}ANK"
+    ank = markers.get(ank_key)
+    if ank is None:
+        return None
+
+    n_frames = ank.shape[1]
+    ank_xy = ank[:2, :]  # horizontal plane
+
+    # Horizontal velocity (mm/s)
+    vx = np.gradient(ank_xy[0, :]) * rate
+    vy = np.gradient(ank_xy[1, :]) * rate
+
+    # Project velocity onto throwing direction if available
+    if throwing_dir is not None:
+        v_proj = vx * throwing_dir[0] + vy * throwing_dir[1]
+    else:
+        v_proj = np.sqrt(vx**2 + vy**2)
+
+    # Velocity at foot strike
+    vel_at_strike = v_proj[foot_strike_frame]
+
+    # Velocity 50ms after foot strike
+    post_frames = int(0.050 * rate)
+    post_idx = min(foot_strike_frame + post_frames, n_frames - 1)
+    vel_post_strike = v_proj[post_idx]
+
+    # Braking metrics
+    delta_v = vel_at_strike - vel_post_strike
+    dt = post_frames / rate
+    decel = delta_v / dt if dt > 0 else 0.0
+
+    return {
+        "ankle_velocity_at_strike": vel_at_strike,
+        "ankle_velocity_post_strike": vel_post_strike,
+        "ankle_velocity_delta": delta_v,
+        "ankle_braking_decel": decel,
+    }
+
+
+def compute_lead_knee_extension_velocity(markers, foot_strike_frame, rate, side="L"):
+    """Compute lead knee extension velocity after foot strike.
+
+    Measures how quickly the lead knee extends (straightens) after ground
+    contact, which is a key component of the lead leg block mechanism.
+
+    Returns:
+        dict with knee extension metrics, or None if markers missing.
+    """
+    knee_angles = compute_knee_flexion(markers, side)
+    if knee_angles is None:
+        return None
+
+    n_frames = len(knee_angles)
+
+    # Knee angle at foot strike
+    angle_at_strike = knee_angles[foot_strike_frame]
+
+    # Window: 200ms after foot strike
+    window_frames = int(0.200 * rate)
+    end_idx = min(foot_strike_frame + window_frames, n_frames)
+
+    if end_idx <= foot_strike_frame:
+        return None
+
+    post_strike = knee_angles[foot_strike_frame:end_idx]
+
+    # Angular velocity (deg/s)
+    ang_vel = compute_angular_velocity(knee_angles, rate)
+    post_vel = ang_vel[foot_strike_frame:end_idx]
+
+    # Peak extension velocity (positive = extending/straightening)
+    peak_ext_vel = np.nanmax(post_vel)
+
+    # Maximum extension angle after strike
+    max_ext_angle = np.nanmax(post_strike)
+    ext_range = max_ext_angle - angle_at_strike
+
+    # Time to peak extension
+    peak_ext_frame = np.nanargmax(post_strike)
+    time_to_peak = peak_ext_frame / rate
+
+    return {
+        "knee_angle_at_strike": angle_at_strike,
+        "knee_ext_peak_velocity": peak_ext_vel,
+        "knee_extension_range": ext_range,
+        "time_to_peak_extension": time_to_peak,
+    }
+
+
+def compute_lead_leg_block_features(markers, rate, side="L"):
+    """Compute all lead leg block features.
+
+    Orchestrates foot strike detection, ankle braking, and knee extension
+    analysis into a unified feature set with 'llb_' prefix.
+
+    Returns:
+        dict of LLB features (empty dict if foot strike not detected).
+    """
+    fs = detect_foot_strike(markers, side, rate)
+    if fs is None:
+        return {}
+
+    throwing_dir = infer_throwing_direction(markers)
+    braking = compute_ankle_braking(markers, fs, rate, throwing_dir, side)
+    knee = compute_lead_knee_extension_velocity(markers, fs, rate, side)
+
+    result = {
+        "llb_foot_strike_frame": fs,
+        "llb_foot_strike_time_s": fs / rate,
+    }
+    if braking:
+        result.update({f"llb_{k}": v for k, v in braking.items()})
+    if knee:
+        result.update({f"llb_{k}": v for k, v in knee.items()})
+    return result
+
+
 def analyze(filepath, mode="pitching"):
     """Run full joint angle analysis on a C3D file."""
     print(f"\nAnalyzing {mode}: {filepath}")
