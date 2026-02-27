@@ -1,0 +1,56 @@
+name: Test Lead Leg Block Analysis
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-llb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install ezc3d numpy pandas scipy matplotlib
+
+      - name: Unit test - foot strike detection
+        run: |
+          python -c "
+          from skeleton_analysis import load_c3d, detect_foot_strike, compute_lead_leg_block_features
+          markers, rate, n = load_c3d('data/raw/pitching_sample.c3d')
+          fs = detect_foot_strike(markers, 'L', rate)
+          print(f'Foot strike frame: {fs} / {n} ({fs/n*100:.0f}%)' if fs else 'Foot strike: None')
+          llb = compute_lead_leg_block_features(markers, rate, 'L')
+          print(f'LLB features: {len(llb)} keys')
+          for k, v in llb.items():
+              print(f'  {k}: {v:.2f}' if isinstance(v, float) else f'  {k}: {v}')
+          assert fs is not None, 'Foot strike detection failed'
+          assert 0.3 < fs/n < 0.7, f'Foot strike at {fs/n*100:.0f}% - outside expected 30-70% range'
+          assert len(llb) > 0, 'No LLB features extracted'
+          print('PASS: All unit tests passed')
+          "
+
+      - name: Unit test - hitting sample
+        run: |
+          python -c "
+          from skeleton_analysis import load_c3d, compute_lead_leg_block_features
+          markers, rate, n = load_c3d('data/raw/hitting_sample.c3d')
+          llb = compute_lead_leg_block_features(markers, rate, 'L')
+          print(f'Hitting LLB features: {len(llb)} keys')
+          for k, v in llb.items():
+              print(f'  {k}: {v:.2f}' if isinstance(v, float) else f'  {k}: {v}')
+          print('PASS: Hitting sample processed (features may be empty if no foot strike detected)')
+          "
+
+      - name: Pipeline test - pitching correlation (5 samples)
+        run: python statcast_correlation.py --mode pitching --download 5
+
+      - name: Upload output artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: llb-test-output
+          path: data/output/
