@@ -48,6 +48,9 @@ jobs:
       - name: Full pipeline - pitching correlation (40 samples)
         run: python statcast_correlation.py --mode pitching --download 40
 
+      - name: Generate LLB comparison GIF
+        run: python llb_comparison.py --download 40
+
       - name: Upload output artifacts
         uses: actions/upload-artifact@v4
         if: always()
