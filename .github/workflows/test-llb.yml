@@ -6,6 +6,8 @@ on:
 jobs:
   test-llb:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,14 +47,14 @@ jobs:
           print('PASS: Hitting sample processed (features may be empty if no foot strike detected)')
           "
 
-      - name: Full pipeline - pitching correlation (40 samples)
-        run: python statcast_correlation.py --mode pitching --download 40
+      - name: Full pipeline - pitching correlation (60 samples)
+        run: python statcast_correlation.py --mode pitching --download 60
 
       - name: Generate LLB comparison GIF
-        run: python llb_comparison.py --download 40
+        run: python llb_comparison.py --download 60
 
       - name: Generate LLB knee detail GIF
-        run: python llb_knee_detail.py --download 40
+        run: python llb_knee_detail.py --download 60
 
       - name: Upload output artifacts
         uses: actions/upload-artifact@v4

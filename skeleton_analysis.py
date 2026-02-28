@@ -451,6 +451,47 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
     return result
 
 
+def compute_timing_features(markers, foot_strike_frame, rate, side="L"):
+    """Timing and phase metrics relative to foot strike.
+
+    Captures WHERE in the kinematic sequence the pitcher is when the front
+    foot lands. Good timing = hips open, shoulders still closed, arm cocked.
+    """
+    result = {}
+    throw_side = "R" if side == "L" else "L"
+
+    # 1. Trunk rotation at foot strike + velocity
+    trunk_rot = compute_trunk_rotation(markers)
+    if trunk_rot is not None:
+        result["trunk_rotation_at_strike"] = float(trunk_rot[foot_strike_frame])
+        trunk_vel = compute_angular_velocity(trunk_rot, rate)
+        result["trunk_rot_vel_at_strike"] = float(trunk_vel[foot_strike_frame])
+
+        # Time from foot strike to peak trunk rotation velocity
+        post_vel = np.abs(trunk_vel[foot_strike_frame:])
+        if len(post_vel) > 0:
+            peak_idx = int(np.argmax(post_vel))
+            result["time_fs_to_peak_trunk_vel"] = float(peak_idx / rate)
+
+    # 2. Elbow angle at foot strike + time to peak elbow velocity
+    elbow = compute_elbow_flexion(markers, throw_side)
+    if elbow is not None:
+        result["elbow_angle_at_strike"] = float(elbow[foot_strike_frame])
+        elbow_vel = np.abs(compute_angular_velocity(elbow, rate))
+
+        post_vel = elbow_vel[foot_strike_frame:]
+        if len(post_vel) > 0:
+            peak_idx = int(np.argmax(post_vel))
+            result["time_fs_to_peak_elbow_vel"] = float(peak_idx / rate)
+
+    # 3. Shoulder abduction at foot strike
+    shoulder = compute_shoulder_abduction(markers, throw_side)
+    if shoulder is not None:
+        result["shoulder_abd_at_strike"] = float(shoulder[foot_strike_frame])
+
+    return result
+
+
 def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
     """Compute all lead leg block features.
 
@@ -480,6 +521,10 @@ def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
     # Position-based braking features (the real "braking" signal)
     pos = compute_position_braking_features(markers, fs, rate, throwing_dir, side)
     result.update({f"llb_{k}": v for k, v in pos.items()})
+
+    # Timing/phase features relative to foot strike
+    timing = compute_timing_features(markers, fs, rate, side)
+    result.update({f"llb_{k}": v for k, v in timing.items()})
 
     return result
 

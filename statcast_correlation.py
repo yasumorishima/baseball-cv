@@ -158,26 +158,51 @@ def process_multiple_files(mode="pitching"):
 
 
 def download_additional_samples(mode="pitching", n_samples=15):
-    """Download additional C3D files from Driveline OBP for correlation analysis."""
+    """Download additional C3D files from Driveline OBP for correlation analysis.
+
+    Uses GITHUB_TOKEN env var for authenticated requests (5000 req/h)
+    if available, otherwise falls back to unauthenticated (60 req/h).
+    Supports pagination for >100 athletes.
+    """
     import json
+    import os
     import urllib.request
 
+    token = os.environ.get("GITHUB_TOKEN", "")
     base_url = "https://api.github.com/repos/drivelineresearch/openbiomechanics/contents"
     data_path = f"baseball_{mode}/data/c3d"
-    api_url = f"{base_url}/{data_path}?per_page=100"
 
+    def _headers():
+        h = {"User-Agent": "baseball-cv"}
+        if token:
+            h["Authorization"] = f"token {token}"
+        return h
+
+    # Fetch folder list with pagination
     print(f"  Fetching folder list from Driveline OBP ({mode})...")
-    try:
-        req = urllib.request.Request(api_url, headers={"User-Agent": "baseball-cv"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            folders = json.loads(resp.read())
-    except Exception as e:
-        print(f"  Error fetching folder list: {e}")
-        return []
+    folders = []
+    page = 1
+    while True:
+        api_url = f"{base_url}/{data_path}?per_page=100&page={page}"
+        try:
+            req = urllib.request.Request(api_url, headers=_headers())
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                batch = json.loads(resp.read())
+        except Exception as e:
+            print(f"  Error fetching folder list (page {page}): {e}")
+            break
 
-    if not isinstance(folders, list):
-        print(f"  Unexpected API response: {folders}")
-        return []
+        if not isinstance(batch, list) or len(batch) == 0:
+            break
+        folders.extend(batch)
+        if len(batch) < 100:
+            break
+        # Stop paginating once we have enough folders
+        if len(folders) >= n_samples:
+            break
+        page += 1
+
+    print(f"  Found {len(folders)} athlete folders")
 
     downloaded = []
     count = 0
@@ -189,7 +214,7 @@ def download_additional_samples(mode="pitching", n_samples=15):
         folder_url = f"{base_url}/{data_path}/{folder_name}"
 
         try:
-            req = urllib.request.Request(folder_url, headers={"User-Agent": "baseball-cv"})
+            req = urllib.request.Request(folder_url, headers=_headers())
             with urllib.request.urlopen(req, timeout=15) as resp:
                 files = json.loads(resp.read())
         except Exception:
@@ -517,7 +542,7 @@ def print_correlation_summary(df, mode):
 def main():
     parser = argparse.ArgumentParser(description="Skeleton features × Statcast correlation")
     parser.add_argument("--mode", choices=["pitching", "hitting", "both"], default="pitching")
-    parser.add_argument("--download", type=int, default=40,
+    parser.add_argument("--download", type=int, default=60,
                         help="Number of additional C3D files to download for correlation")
     args = parser.parse_args()
 
