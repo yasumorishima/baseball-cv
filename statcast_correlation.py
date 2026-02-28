@@ -82,11 +82,15 @@ def extract_peak_features(markers, rate, mode="pitching"):
     n_frames = next(iter(markers.values())).shape[1]
     features = {}
 
-    # Throwing/hitting arm
-    side = "R"  # default right-handed
+    # Detect throwing/hitting arm by comparing elbow angular velocity
+    elbow_R = compute_elbow_flexion(markers, "R")
+    elbow_L = compute_elbow_flexion(markers, "L")
+    vel_R = np.nanmax(np.abs(compute_angular_velocity(elbow_R, rate))) if elbow_R is not None else 0
+    vel_L = np.nanmax(np.abs(compute_angular_velocity(elbow_L, rate))) if elbow_L is not None else 0
+    side = "R" if vel_R >= vel_L else "L"
 
-    # Elbow flexion
-    elbow = compute_elbow_flexion(markers, side)
+    # Elbow flexion (throwing arm)
+    elbow = elbow_R if side == "R" else elbow_L
     if elbow is not None:
         features["peak_elbow_flexion"] = np.nanmax(elbow)
         features["min_elbow_flexion"] = np.nanmin(elbow)
@@ -312,11 +316,10 @@ def plot_scatter(df, mode, output_dir):
 
     feature_pairs = [
         ("peak_knee_flexion", "Peak Knee Flexion (\u00b0)"),
+        ("min_knee_flexion", "Min Knee Flexion (\u00b0)"),
+        ("peak_shoulder_abduction", "Peak Shoulder Abduction (\u00b0)"),
         ("llb_stride_length_norm", "Stride Length / Height"),
         ("trunk_rotation_range", "Trunk Rotation Range (\u00b0)"),
-        ("peak_shoulder_abduction", "Peak Shoulder Abduction (\u00b0)"),
-        ("llb_time_fs_to_peak_trunk_vel", "Foot Strike \u2192 Peak Trunk Vel (s)"),
-        ("llb_head_forward_disp_norm", "Head Forward Disp / Height"),
     ]
 
     available = [(col, label) for col, label in feature_pairs if col in df.columns]
@@ -325,7 +328,7 @@ def plot_scatter(df, mode, output_dir):
         return
 
     n_plots = len(available)
-    n_cols = 3
+    n_cols = min(3, n_plots)
     n_rows = (n_plots + n_cols - 1) // n_cols
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows))
     axes = np.array(axes).flatten()
