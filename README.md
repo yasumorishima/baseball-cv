@@ -85,7 +85,7 @@ The strong block pitcher lands with a bent knee and actively extends it — tran
 
 ![LLB Profile](data/output/llb_profile_pitching.png)
 
-Pitchers are divided into 4 groups by pitch speed (Q1 = slowest, Q4 = fastest). Each bar shows the group average for two LLB metrics. In this 41-pitcher sample, **no clear correlation was found** between pitch speed and lead leg block strength — suggesting that LLB mechanics alone do not determine velocity, and other factors (arm speed, trunk rotation, etc.) play significant roles.
+Pitchers are divided into 4 groups by pitch speed (Q1 = slowest, Q4 = fastest). Each bar shows the group average. Ankle braking shows a weak upward trend, but knee angle metrics show **no clear correlation** with pitch speed in this 41-pitcher sample — suggesting that LLB mechanics alone do not determine velocity, and other factors (arm speed, trunk rotation, etc.) play significant roles.
 
 > The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
 

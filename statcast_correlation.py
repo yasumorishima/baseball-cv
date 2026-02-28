@@ -376,22 +376,31 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
             "desc": "How sharply the front ankle decelerates\nat foot strike. Larger = harder plant.",
             "fmt": ".1f",
         },
-        "llb_knee_ext_peak_velocity": {
-            "title": "Lead Knee Extension Speed",
-            "ylabel": "Peak Angular Velocity (deg/s)",
-            "desc": "How fast the lead knee straightens\nafter foot strike. Higher = stronger block.",
+        "llb_knee_angle_at_strike": {
+            "title": "Knee Angle at Foot Strike",
+            "ylabel": "Angle (degrees)",
+            "desc": "How bent the lead knee is when\nthe front foot lands. 180\u00b0 = straight, 90\u00b0 = bent.",
             "fmt": ".0f",
+        },
+        "llb_knee_extension_range": {
+            "title": "Knee Extension After Strike",
+            "ylabel": "Extension Range (degrees)",
+            "desc": "How much the lead knee straightens\nafter foot strike. More = stronger block.",
+            "fmt": ".1f",
         },
     }
 
-    # Focus on the two most important metrics
-    key_metrics = [c for c in ["llb_ankle_velocity_delta", "llb_knee_ext_peak_velocity"]
-                   if c in available]
+    # Key metrics to display
+    key_metrics = [c for c in [
+        "llb_ankle_velocity_delta",
+        "llb_knee_angle_at_strike",
+        "llb_knee_extension_range",
+    ] if c in available]
     if not key_metrics:
-        key_metrics = available[:2]
+        key_metrics = available[:3]
 
     n_metrics = len(key_metrics)
-    fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 7))
+    fig, axes = plt.subplots(1, n_metrics, figsize=(6 * n_metrics, 7))
     if n_metrics == 1:
         axes = [axes]
 
