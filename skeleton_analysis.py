@@ -120,8 +120,8 @@ def compute_angular_velocity(angles, rate):
 def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
     """Detect foot strike frame from heel marker vertical trajectory.
 
-    Finds the frame where the lead foot contacts the ground by detecting
-    the transition from downward heel motion to near-zero vertical velocity.
+    Uses vertical acceleration spike (ground impact) as primary signal,
+    with heel height and arm timing as sanity checks.
 
     Returns:
         Frame index of foot strike, or None if detection fails.
@@ -137,60 +137,90 @@ def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
     n_frames = len(heel_z)
 
     # Check for all-zero or all-NaN marker data
-    valid = ~np.isnan(heel_z) & (heel_z != 0)
-    if valid.sum() < n_frames * 0.5:
+    valid_mask = ~np.isnan(heel_z) & (heel_z != 0)
+    if valid_mask.sum() < n_frames * 0.5:
         if verbose:
-            print(f"    [foot_strike] FAIL: '{heel_key}' has {valid.sum()}/{n_frames} valid frames ({valid.sum()/n_frames*100:.0f}%)")
+            print(f"    [foot_strike] FAIL: '{heel_key}' has {valid_mask.sum()}/{n_frames} valid frames")
         return None
 
-    # Vertical velocity (mm/s)
+    # Vertical velocity and acceleration
     heel_vz = np.gradient(heel_z) * rate
+    heel_az = np.gradient(heel_vz) * rate  # acceleration (positive = upward impulse = impact)
 
-    # Smooth with 5-frame moving average
+    # Smooth
     kernel = np.ones(5) / 5
     heel_vz_smooth = np.convolve(heel_vz, kernel, mode="same")
+    heel_az_smooth = np.convolve(heel_az, kernel, mode="same")
 
     # Find leg lift peak (highest heel Z after start)
-    # Skip first 10% of frames to avoid initial pose
     start = n_frames // 10
     lift_peak = start + np.argmax(heel_z[start:])
 
     if verbose:
         print(f"    [foot_strike] n_frames={n_frames}, lift_peak={lift_peak} "
-              f"(heel_z={heel_z[lift_peak]:.0f}mm)")
+              f"(heel_z={heel_z[lift_peak]:.4f}m)")
 
-    # After lift peak, find where vz goes from negative to near-zero
-    # (heel descending then stopping = ground contact)
-    min_heel_z = np.min(heel_z[lift_peak:])
-    heel_z_range = np.max(heel_z[lift_peak:]) - min_heel_z
-    threshold_z = min_heel_z + heel_z_range * 0.10
+    # Ground level = minimum heel Z in the recording
+    min_heel_z = np.min(heel_z[valid_mask])
+    ground_threshold = min_heel_z + 0.05  # within 5cm of ground
+
+    # Find arm peak velocity frame as upper bound
+    # Foot strike must happen BEFORE peak arm speed
+    arm_peak_frame = n_frames  # default: no constraint
+    for arm_side in ["R", "L"]:
+        fin = markers.get(f"{arm_side}FIN")
+        if fin is not None:
+            fin_v = np.sqrt(np.sum(np.gradient(fin, axis=1) ** 2, axis=0)) * rate
+            fin_v_smooth = np.convolve(fin_v, kernel, mode="same")
+            peak_frame = np.argmax(fin_v_smooth)
+            if peak_frame > lift_peak:
+                arm_peak_frame = min(arm_peak_frame, peak_frame)
 
     if verbose:
-        print(f"    [foot_strike] min_heel_z={min_heel_z:.0f}mm, "
-              f"range={heel_z_range:.0f}mm, threshold={threshold_z:.0f}mm")
+        print(f"    [foot_strike] ground_threshold={ground_threshold:.4f}m, "
+              f"arm_peak_frame={arm_peak_frame}")
 
-    # Track why candidates are rejected
-    vel_candidates = 0
-    z_rejects = 0
-    for i in range(lift_peak + 1, n_frames - 1):
-        # Velocity was negative (descending) and is now near zero
+    # Search window: after lift peak, before arm peak + small margin
+    search_end = min(n_frames - 1, arm_peak_frame + int(0.05 * rate))
+
+    # Method 1: Find largest upward acceleration spike (ground impact)
+    # after lift peak and while heel is descending
+    search_region = slice(lift_peak + 1, search_end)
+    az_region = heel_az_smooth[search_region].copy()
+
+    # Only consider frames where heel is descending or just stopped
+    # and heel is near ground level
+    best_frame = None
+    best_score = -np.inf
+
+    for i in range(lift_peak + 1, search_end):
+        # Must be near ground
+        if heel_z[i] > ground_threshold:
+            continue
+        # Acceleration spike (positive = upward impulse from ground)
+        score = heel_az_smooth[i]
+        if score > best_score:
+            best_score = score
+            best_frame = i
+
+    if best_frame is not None:
+        if verbose:
+            print(f"    [foot_strike] FOUND (accel spike): frame {best_frame}/{n_frames} "
+                  f"({best_frame/n_frames*100:.0f}%), "
+                  f"heel_z={heel_z[best_frame]:.4f}m, az={best_score:.2f}")
+        return best_frame
+
+    # Method 2: Fallback — velocity transition (original method) with strict ground check
+    for i in range(lift_peak + 1, search_end):
         if heel_vz_smooth[i - 1] < 0 and abs(heel_vz_smooth[i]) < abs(heel_vz_smooth[lift_peak]) * 0.1:
-            vel_candidates += 1
-            # Confirm heel is near its minimum (within 10% of range)
-            if heel_z[i] <= threshold_z:
+            if heel_z[i] <= ground_threshold:
                 if verbose:
-                    print(f"    [foot_strike] FOUND: frame {i}/{n_frames} "
-                          f"({i/n_frames*100:.0f}%), heel_z={heel_z[i]:.0f}mm")
+                    print(f"    [foot_strike] FOUND (vel fallback): frame {i}/{n_frames} "
+                          f"({i/n_frames*100:.0f}%), heel_z={heel_z[i]:.4f}m")
                 return i
-            else:
-                z_rejects += 1
 
     if verbose:
-        print(f"    [foot_strike] FAIL: no frame matched. "
-              f"vel_candidates={vel_candidates}, z_rejects={z_rejects}")
-        if vel_candidates > 0 and z_rejects == vel_candidates:
-            print(f"    [foot_strike] All {z_rejects} velocity-matched frames rejected by Z threshold")
-
+        print(f"    [foot_strike] FAIL: no frame matched")
     return None
 
 

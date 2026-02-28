@@ -37,8 +37,13 @@ def find_best_worst():
         1 - valid["llb_head_forward_disp_post"] / valid["llb_head_forward_disp"]
     ).clip(0, 1)
     valid["exists"] = valid["filename"].apply(lambda f: (RAW_DIR / f).exists())
-    available = valid[valid["exists"]].sort_values("head_stability_score")
-    return available.iloc[-1], available.iloc[0]  # stable, unstable
+    available = valid[valid["exists"]].copy()
+
+    # Pick pair with similar foot strike timing but different head stability
+    # fs=524 (stable, score=0.76) vs fs=522 (unstable, score=0.53)
+    stable = available[available["filename"].str.contains("000538")].iloc[0]
+    unstable = available[available["filename"].str.contains("000359")].iloc[0]
+    return stable, unstable
 
 
 def get_head_center(labels, points, fi):
@@ -129,6 +134,8 @@ def main():
         gx, gz = points[0][valid], points[2][valid]
         cx, cz = np.mean(gx), np.mean(gz)
         span = max(np.ptp(gx), np.ptp(gz)) * 0.55
+        # Shift left: move center leftward so figure sits on the left side
+        cx -= span * 0.3
         return cx, cz, span
 
     cx_s, cz_s, span_s = get_bounds(points_s)

@@ -34,7 +34,11 @@ HEAD_CONNECTIONS = [
 
 
 def find_best_worst():
-    """Find most stable and most unstable pitcher from local C3D files."""
+    """Find most stable and most unstable pitcher from local C3D files.
+
+    Picks a pair with similar foot strike timing (fs=522 vs 524)
+    so the visual comparison is fair.
+    """
     import pandas as pd
 
     df = pd.read_csv(OUTPUT_DIR / "features_pitching.csv")
@@ -46,13 +50,11 @@ def find_best_worst():
     valid["exists"] = valid["filename"].apply(
         lambda f: (RAW_DIR / f).exists()
     )
-    available = valid[valid["exists"]].sort_values("head_stability_score")
+    available = valid[valid["exists"]].copy()
 
-    if len(available) < 2:
-        raise RuntimeError(f"Need at least 2 samples, got {len(available)}")
-
-    unstable = available.iloc[0]
-    stable = available.iloc[-1]
+    # Similar foot strike timing, different head stability
+    stable = available[available["filename"].str.contains("000538")].iloc[0]
+    unstable = available[available["filename"].str.contains("000359")].iloc[0]
     return stable, unstable
 
 
