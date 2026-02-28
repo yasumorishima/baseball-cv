@@ -12,6 +12,13 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 4 | `statcast_correlation.py` | Feature extraction from C3D: 100 biomechanical features across 60 pitchers |
 | 5 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
 
+## Articles
+
+| Steps | Title | Links |
+|-------|-------|-------|
+| 1–3 | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f) |
+| 4–5 | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132) |
+
 ## Results
 
 ### Step 1: 3D Skeleton Visualization (ezc3d)
@@ -100,6 +107,10 @@ The time-series shows each joint's rotational speed per frame. This reveals the 
 
 With 16 samples the p-values don't reach significance, but trunk rotation range shows the strongest correlation (r=0.425). Step 4–5 expand this with 60 pitchers.
 
+> 📝 [3D Skeleton Detection from Baseball Motion Capture Data](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f))
+
+---
+
 ### Step 4–5: Efficient Throwing — Body Mechanics Analysis
 
 60 Driveline OBP pitchers analyzed. **Finding**: Pitchers with identical arm speed (24–26 m/s) vary by 13 mph in pitch speed. Four independent body mechanics factors explain 17.8% additional variance beyond arm speed alone.
@@ -129,6 +140,8 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 > **Knee smoothness** is a suppressor variable: raw r=+0.12 (explosive athletes have fast arms AND jerky knees), but after controlling for arm speed: r=−0.45\*\*\* — smooth knee → pelvis/arm ratio 17% higher → body drives the arm rather than the arm self-generating.
 
 > **Root cause of short stride**: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited (ankle braking → stride r=+0.55\*\*\*).
+
+> 📝 [Why Two Pitchers with the Same Arm Speed Differ by 10 mph](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132))
 
 ## Setup
 
