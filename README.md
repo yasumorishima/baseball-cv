@@ -72,15 +72,20 @@ These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) an
 | | Strong Block | Weak Block |
 |---|---|---|
 | Pitch Speed | 88.9 mph | 80.9 mph |
-| Knee Ext Velocity | 769 deg/s | -12 deg/s |
+| Knee Angle at Foot Strike | 141.5° (bent) | 175.5° (nearly straight) |
+| Knee Extension After Strike | +37.7° (actively extends) | +0.0° (no extension) |
 
-**Knee extension detail** — zoomed 2D view with real-time angle & velocity annotations:
+The strong block pitcher lands with a bent knee and actively extends it — transferring ground reaction force up the kinetic chain. The weak block pitcher's knee is already straight at foot strike and doesn't move further.
+
+**Knee extension detail** — full-body skeleton with real-time knee angle overlay and time-series graph:
 
 ![Knee Detail](data/output/llb_knee_detail.gif)
 
 **LLB metrics by speed quartile** — do faster pitchers block harder?
 
 ![LLB Profile](data/output/llb_profile_pitching.png)
+
+Pitchers are divided into 4 groups by pitch speed (Q1 = slowest, Q4 = fastest). Each bar shows the group average for two LLB metrics. In this 41-pitcher sample, **no clear correlation was found** between pitch speed and lead leg block strength — suggesting that LLB mechanics alone do not determine velocity, and other factors (arm speed, trunk rotation, etc.) play significant roles.
 
 > The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
 
