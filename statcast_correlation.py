@@ -287,8 +287,6 @@ def plot_scatter(df, mode, output_dir):
         ("peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
         ("peak_shoulder_abduction", "Peak Shoulder Abduction (deg)"),
         ("trunk_rotation_range", "Trunk Rotation Range (deg)"),
-        ("llb_ankle_velocity_delta", "Ankle Braking \u0394V (mm/s)"),
-        ("llb_knee_ext_peak_velocity", "Lead Knee Ext Velocity (deg/s)"),
     ]
 
     available = [(col, label) for col, label in feature_pairs if col in df.columns]
@@ -340,97 +338,53 @@ def plot_scatter(df, mode, output_dir):
 
 
 def plot_lead_leg_block_profile(df, mode, output_dir):
-    """Plot LLB metrics by speed quartile — bar chart showing faster = stronger block."""
-    speed_key = "pitch_speed_mph" if mode == "pitching" else "exit_velocity_mph"
+    """Scatter plots: Lead Leg Block metrics vs Arm Speed metrics.
 
-    if speed_key not in df.columns or df[speed_key].isna().all():
-        print("  No speed data available for LLB profile")
-        return
-
-    llb_cols = [c for c in df.columns if c.startswith("llb_") and c not in (
-        "llb_foot_strike_frame", "llb_foot_strike_time_s",
-    )]
-    available = [c for c in llb_cols if c in df.columns and df[c].notna().sum() >= 4]
-    if not available:
-        print("  Not enough LLB data for quartile profile")
-        return
-
-    # Create speed quartiles with descriptive labels
-    valid = df.dropna(subset=[speed_key])
-    valid = valid.copy()
-    speed_unit = "mph"
-    quartile_bounds = valid[speed_key].quantile([0, 0.25, 0.5, 0.75, 1.0])
-    q_labels = [
-        f"Q1 (slowest)\n{quartile_bounds.iloc[0]:.0f}-{quartile_bounds.iloc[1]:.0f} {speed_unit}",
-        f"Q2\n{quartile_bounds.iloc[1]:.0f}-{quartile_bounds.iloc[2]:.0f} {speed_unit}",
-        f"Q3\n{quartile_bounds.iloc[2]:.0f}-{quartile_bounds.iloc[3]:.0f} {speed_unit}",
-        f"Q4 (fastest)\n{quartile_bounds.iloc[3]:.0f}-{quartile_bounds.iloc[4]:.0f} {speed_unit}",
+    Tests the biomechanical hypothesis: stronger leg block → faster arm action.
+    """
+    # LLB features (X axis) vs arm speed features (Y axis)
+    scatter_pairs = [
+        ("llb_knee_extension_range", "Knee Extension After Strike (\u00b0)",
+         "peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
+        ("llb_ankle_velocity_delta", "Ankle Braking at Foot Strike (mm/s)",
+         "peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
+        ("llb_knee_extension_range", "Knee Extension After Strike (\u00b0)",
+         "peak_shoulder_velocity", "Peak Shoulder Angular Velocity (deg/s)"),
     ]
-    valid["speed_quartile"] = pd.qcut(valid[speed_key], q=4, labels=q_labels)
 
-    # Readable labels and units for each metric
-    metric_info = {
-        "llb_ankle_velocity_delta": {
-            "title": "Ankle Braking at Foot Strike",
-            "ylabel": "Velocity Change (mm/s)",
-            "desc": "How sharply the front ankle decelerates\nat foot strike. Larger = harder plant.",
-            "fmt": ".1f",
-        },
-        "llb_knee_angle_at_strike": {
-            "title": "Knee Angle at Foot Strike",
-            "ylabel": "Angle (degrees)",
-            "desc": "How bent the lead knee is when\nthe front foot lands. 180\u00b0 = straight, 90\u00b0 = bent.",
-            "fmt": ".0f",
-        },
-        "llb_knee_extension_range": {
-            "title": "Knee Extension After Strike",
-            "ylabel": "Extension Range (degrees)",
-            "desc": "How much the lead knee straightens\nafter foot strike. More = stronger block.",
-            "fmt": ".1f",
-        },
-    }
+    available = [(xc, xl, yc, yl) for xc, xl, yc, yl in scatter_pairs
+                 if xc in df.columns and yc in df.columns
+                 and df[[xc, yc]].dropna().shape[0] >= 5]
+    if not available:
+        print("  Not enough data for LLB vs arm speed scatter plots")
+        return
 
-    # Key metrics to display
-    key_metrics = [c for c in [
-        "llb_ankle_velocity_delta",
-        "llb_knee_angle_at_strike",
-        "llb_knee_extension_range",
-    ] if c in available]
-    if not key_metrics:
-        key_metrics = available[:3]
-
-    n_metrics = len(key_metrics)
-    fig, axes = plt.subplots(1, n_metrics, figsize=(6 * n_metrics, 7))
-    if n_metrics == 1:
+    n = len(available)
+    fig, axes = plt.subplots(1, n, figsize=(7 * n, 6))
+    if n == 1:
         axes = [axes]
 
-    colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c"]
+    for ax, (xc, xl, yc, yl) in zip(axes, available):
+        valid = df[[xc, yc]].dropna()
+        x, y = valid[xc].values, valid[yc].values
 
-    for ax, col in zip(axes, key_metrics):
-        info = metric_info.get(col, {})
-        grouped = valid.groupby("speed_quartile", observed=True)[col].mean()
-        bars = ax.bar(range(len(grouped)), grouped.values, color=colors[:len(grouped)],
-                      edgecolor="black", linewidth=0.5, width=0.7)
-        ax.set_xticks(range(len(grouped)))
-        ax.set_xticklabels(grouped.index, fontsize=11)
-        ax.set_xlabel("Pitch Speed Quartile (grouped by speed)", fontsize=12, fontweight="bold")
-        ax.set_ylabel(info.get("ylabel", col), fontsize=12, fontweight="bold")
-        ax.set_title(info.get("title", col) + "\n" + info.get("desc", ""),
-                     fontsize=13, fontweight="bold", linespacing=1.4)
-        ax.grid(True, alpha=0.3, axis="y")
+        ax.scatter(x, y, alpha=0.7, edgecolors="black", linewidths=0.5, s=70,
+                   color="#2980b9")
 
-        # Value labels on bars — use appropriate decimal format
-        fmt = info.get("fmt", ".1f")
-        for bar, val in zip(bars, grouped.values):
-            if not np.isnan(val):
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                        f"{val:{fmt}}", ha="center", va="bottom", fontsize=13,
-                        fontweight="bold")
+        # Trend line + correlation
+        slope, intercept, r_val, p_val, _ = stats.linregress(x, y)
+        x_line = np.linspace(x.min(), x.max(), 50)
+        ax.plot(x_line, slope * x_line + intercept, "r--", alpha=0.7, linewidth=2)
 
-    speed_label = "Pitch Speed" if mode == "pitching" else "Exit Velocity"
-    fig.suptitle(f"Do Faster Pitchers Block Harder?\n"
-                 f"Lead Leg Block metrics by {speed_label} quartile "
-                 f"({len(valid)} pitchers, Driveline OBP)",
+        ax.set_xlabel(xl, fontsize=12, fontweight="bold")
+        ax.set_ylabel(yl, fontsize=12, fontweight="bold")
+        sig = "*" if p_val < 0.05 else ""
+        ax.set_title(f"r = {r_val:+.3f}{sig}  (n={len(valid)})",
+                     fontsize=13, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Lead Leg Block \u2192 Arm Speed\n"
+                 "Does a stronger leg block produce faster arm action?",
                  fontsize=15, fontweight="bold", y=1.02)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 

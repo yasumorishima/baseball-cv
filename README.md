@@ -81,11 +81,13 @@ The strong block pitcher lands with a bent knee and actively extends it — tran
 
 ![Knee Detail](data/output/llb_knee_detail.gif)
 
-**LLB metrics by speed quartile** — do faster pitchers block harder?
+**Lead Leg Block → Arm Speed** — does a stronger leg block produce faster arm action?
 
 ![LLB Profile](data/output/llb_profile_pitching.png)
 
-Pitchers are divided into 4 groups by pitch speed (Q1 = slowest, Q4 = fastest). Each bar shows the group average. Ankle braking shows a weak upward trend, but knee angle metrics show **no clear correlation** with pitch speed in this 41-pitcher sample — suggesting that LLB mechanics alone do not determine velocity, and other factors (arm speed, trunk rotation, etc.) play significant roles.
+Each dot is one pitcher. The X axis shows a lead leg block metric, the Y axis shows arm speed (angular velocity). Pitchers who extend their knee more after foot strike tend to have faster elbow and shoulder action (r ≈ +0.25–0.29). This supports the biomechanical hypothesis that leg block helps transfer energy to the arm — though the effect is modest with this sample size (n=26).
+
+Note: The animated GIF above compares the two most extreme cases (selected by knee extension behavior, not by pitch speed). The population-level correlation between LLB and pitch speed is weak, suggesting other factors (trunk rotation, arm mechanics, etc.) also play significant roles.
 
 > The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
 
