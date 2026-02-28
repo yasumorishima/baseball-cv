@@ -197,16 +197,34 @@ def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
                   f"{lift_height:.3f}m (need >= 0.15m)")
         return None
 
-    # Threshold: ground level + 3cm tolerance
-    threshold = ground_z + 0.03
+    # Threshold: ground level + 5cm (wider window for ground_z estimation error)
+    threshold = ground_z + 0.05
 
-    # After lift peak, find first frame where heel Z drops to ground
+    # Smoothed vertical velocity (m/s) for landing verification
+    heel_vz = np.gradient(heel_z) * rate
+    kernel = np.ones(5) / 5.0
+    heel_vz_sm = np.convolve(heel_vz, kernel, mode="same")
+
+    # Landing criterion: near ground (position) AND foot has stopped (velocity)
+    # vel_threshold = -0.15 m/s: foot considered landed if descent < 15 cm/s
+    vel_threshold = -0.10
+
     for i in range(lift_peak + 1, n_frames):
-        if heel_z[i] <= threshold:
+        if heel_z[i] <= threshold and heel_vz_sm[i] >= vel_threshold:
             if verbose:
                 print(f"    [foot_strike] FOUND: frame {i}/{n_frames} "
                       f"({i / n_frames * 100:.1f}%), "
-                      f"heel_z={heel_z[i]:.4f}m, ground={ground_z:.4f}m")
+                      f"heel_z={heel_z[i]:.4f}m, vel={heel_vz_sm[i]:.3f} m/s")
+            return i
+
+    # Fallback: relax velocity threshold (handles unusual landing patterns)
+    if verbose:
+        print(f"    [foot_strike] strict check failed, relaxing vel threshold")
+    for i in range(lift_peak + 1, n_frames):
+        if heel_z[i] <= threshold and heel_vz_sm[i] >= -0.50:
+            if verbose:
+                print(f"    [foot_strike] FALLBACK frame {i}/{n_frames} "
+                      f"heel_z={heel_z[i]:.4f}m, vel={heel_vz_sm[i]:.3f} m/s")
             return i
 
     if verbose:
