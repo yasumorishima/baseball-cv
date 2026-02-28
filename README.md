@@ -10,6 +10,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
 | 4–5 | `statcast_correlation.py` `head_stability_analysis.py` | Movement quality chain: braking → head stability → trunk transfer (60 pitchers) |
+| 6 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
 
 ## Results
 
@@ -66,6 +67,36 @@ Skeleton animation comparison (head markers & trail in red), aligned on foot str
 
 > The same analysis works for hitting (front foot block → bat speed).
 
+### Step 6: Efficient Throwing — Body Mechanics Analysis
+
+**Finding**: Pitchers with identical arm speed (24–26 m/s) vary by 13 mph in pitch speed. Four independent body mechanics factors explain 17.8% additional variance beyond arm speed.
+
+**5-Component Model (R² = 0.669 vs 0.491 arm-speed-only):**
+
+| Component | R² Added | Physical Meaning |
+|-----------|----------|-----------------|
+| Arm speed + height | 0.491 | Baseline: wrist linear speed |
+| + Stride (translational) | +0.038 | Forward momentum delivered to ball |
+| + Leg lift (elastic) | +0.036 | Elastic loading in the back leg |
+| + Arm chain pattern | +0.028 | Does body drive the elbow vs arm self-generating? |
+| + Knee smoothness | **+0.077** | Smooth lead leg = body drives arm (pelvis/arm ratio) |
+
+**Scatter: Same arm speed → 10.3 mph gap (Q1=79 mph vs Q5=89 mph):**
+
+![Efficient Throwing Story](data/output/efficient_throwing_story.png)
+
+**Q1 vs Q5 body mechanics breakdown (same arm speed 24.6 vs 24.7 m/s):**
+
+![Body Efficiency Breakdown](data/output/body_efficiency_breakdown.png)
+
+**Skeleton animation** — Q1 (arm=26.6 m/s, pitch=80.8 mph, stride=0.30 m) vs Q5 (arm=25.0 m/s, pitch=91.8 mph, stride=0.89 m):
+
+![Efficient Thrower Comparison](data/output/efficient_thrower_comparison.gif)
+
+> Knee smoothness is a **suppressor variable**: raw r=+0.12 (jerky athletes have fast arms too), but after controlling for arm speed: r=−0.45\*\*\* — smooth knee → pelvis/arm ratio 17% higher → body drives the arm.
+
+> Root cause of short stride: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited. Mechanism: ankle braking → stride r=+0.55\*\*\*.
+
 ## Setup
 
 ```bash
@@ -105,6 +136,10 @@ python statcast_correlation.py --mode pitching --download 40
 
 # Step 5: Head stability chain analysis
 python head_stability_analysis.py
+
+# Step 6: Body efficiency analysis (requires features_pitching.csv from Step 4)
+python body_efficiency_analysis.py         # Scatter plots + R2 breakdown
+python efficient_thrower_gif.py            # Skeleton animation Q1 vs Q5
 ```
 
 ## Data Sources & Credits
