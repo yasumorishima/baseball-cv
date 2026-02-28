@@ -330,6 +330,96 @@ def compute_lead_knee_extension_velocity(markers, foot_strike_frame, rate, side=
     }
 
 
+def compute_position_braking_features(markers, foot_strike_frame, rate, throwing_dir, side="L"):
+    """Compute position-based braking features at foot strike.
+
+    Measures joint POSITIONS relative to the throwing direction — not angles.
+    The key idea: "braking" means the lead leg acts as a wall, with force
+    directed opposite to the pitching direction.
+
+    All values are projected onto the throwing direction (mm or mm/s).
+    Positive = forward (in throwing direction), Negative = backward.
+    """
+    if throwing_dir is None:
+        return {}
+
+    result = {}
+
+    kne = markers.get(f"{side}KNE")
+    ank = markers.get(f"{side}ANK")
+    n_frames = next(iter(markers.values())).shape[1]
+
+    # 1. Knee-ankle offset in throwing direction at foot strike
+    #    Positive = knee AHEAD of ankle (lunging forward, bad)
+    #    Negative = knee BEHIND ankle (blocking, good)
+    if kne is not None and ank is not None:
+        knee_xy = kne[:2, foot_strike_frame]
+        ankle_xy = ank[:2, foot_strike_frame]
+        offset = knee_xy - ankle_xy
+        result["knee_ankle_offset"] = float(np.dot(offset, throwing_dir))
+
+    # 2. Knee forward velocity at and after foot strike
+    if kne is not None:
+        vx = np.gradient(kne[0, :]) * rate
+        vy = np.gradient(kne[1, :]) * rate
+        v_forward = vx * throwing_dir[0] + vy * throwing_dir[1]
+
+        result["knee_forward_vel_at_strike"] = float(v_forward[foot_strike_frame])
+
+        # Average 50ms after foot strike
+        post_frames = int(0.050 * rate)
+        post_end = min(foot_strike_frame + post_frames, n_frames - 1)
+        result["knee_forward_vel_post"] = float(
+            np.mean(v_forward[foot_strike_frame:post_end + 1])
+        )
+
+        # Deceleration (positive = decelerating = braking)
+        result["knee_forward_decel"] = (
+            result["knee_forward_vel_at_strike"] - result["knee_forward_vel_post"]
+        )
+
+    # 3. Head forward displacement around foot strike (±100ms)
+    #    Less head movement = better energy transfer
+    for key in ("RFHD", "LFHD", "C7"):
+        head = markers.get(key)
+        if head is not None:
+            break
+    else:
+        head = None
+
+    if head is not None:
+        window = int(0.100 * rate)  # 100ms
+        pre = max(0, foot_strike_frame - window)
+        post = min(n_frames - 1, foot_strike_frame + window)
+
+        head_disp = head[:2, post] - head[:2, pre]
+        result["head_forward_disp"] = float(np.dot(head_disp, throwing_dir))
+
+        # Head displacement AFTER foot strike only
+        head_disp_post = head[:2, post] - head[:2, foot_strike_frame]
+        result["head_forward_disp_post"] = float(np.dot(head_disp_post, throwing_dir))
+
+    # 4. Hip-ankle offset (how far forward is the hip over the planted foot)
+    hip = markers.get(f"{side}ASI")
+    if hip is not None and ank is not None:
+        hip_xy = hip[:2, foot_strike_frame]
+        ankle_xy = ank[:2, foot_strike_frame]
+        hip_offset = hip_xy - ankle_xy
+        result["hip_ankle_offset"] = float(np.dot(hip_offset, throwing_dir))
+
+    # 5. Trunk forward lean at foot strike (C7 vs pelvis midpoint)
+    c7 = markers.get("C7")
+    lasi = markers.get("LASI")
+    rasi = markers.get("RASI")
+    if c7 is not None and lasi is not None and rasi is not None:
+        pelvis_mid = (lasi[:2, foot_strike_frame] + rasi[:2, foot_strike_frame]) / 2
+        c7_xy = c7[:2, foot_strike_frame]
+        trunk_lean = c7_xy - pelvis_mid
+        result["trunk_forward_lean"] = float(np.dot(trunk_lean, throwing_dir))
+
+    return result
+
+
 def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
     """Compute all lead leg block features.
 
@@ -355,6 +445,11 @@ def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
         result.update({f"llb_{k}": v for k, v in braking.items()})
     if knee:
         result.update({f"llb_{k}": v for k, v in knee.items()})
+
+    # Position-based braking features (the real "braking" signal)
+    pos = compute_position_braking_features(markers, fs, rate, throwing_dir, side)
+    result.update({f"llb_{k}": v for k, v in pos.items()})
+
     return result
 
 

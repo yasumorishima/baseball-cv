@@ -394,6 +394,50 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
     print(f"  LLB profile: {path}")
 
 
+def print_correlation_summary(df, mode):
+    """Print a ranked summary of correlations for quick review.
+
+    Shows correlations of ALL features against:
+    - Pitch speed / exit velocity
+    - Arm speed metrics (peak elbow/shoulder angular velocity)
+    """
+    speed_key = "pitch_speed_mph" if mode == "pitching" else "exit_velocity_mph"
+    target_cols = [speed_key, "peak_elbow_velocity", "peak_shoulder_velocity"]
+
+    # Identify feature columns (everything except metadata)
+    skip = {
+        "user_id", "session_id", "height_in", "weight_lb",
+        "pitch_number", "pitch_type", "side", "swing_number",
+        "filename", "llb_foot_strike_frame", "llb_foot_strike_time_s",
+    }
+    feature_cols = [c for c in df.columns if c not in skip and c not in target_cols]
+
+    for target in target_cols:
+        if target not in df.columns or df[target].isna().all():
+            continue
+
+        print(f"\n  {'='*55}")
+        print(f"  Correlations with: {target}")
+        print(f"  {'='*55}")
+
+        results = []
+        for feat in feature_cols:
+            valid = df[[target, feat]].dropna()
+            if len(valid) < 5:
+                continue
+            r, p = stats.pearsonr(valid[feat], valid[target])
+            results.append((feat, r, p, len(valid)))
+
+        # Sort by absolute correlation (strongest first)
+        results.sort(key=lambda x: abs(x[1]), reverse=True)
+
+        print(f"  {'Feature':<40} {'r':>7} {'p':>8} {'n':>4}")
+        print(f"  {'-'*40} {'-'*7} {'-'*8} {'-'*4}")
+        for feat, r, p, n in results:
+            sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
+            print(f"  {feat:<40} {r:+.3f} {p:8.4f} {n:4d} {sig}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Skeleton features × Statcast correlation")
     parser.add_argument("--mode", choices=["pitching", "hitting", "both"], default="pitching")
@@ -432,6 +476,9 @@ def main():
         csv_path = OUTPUT_DIR / f"features_{mode}.csv"
         df.to_csv(str(csv_path), index=False)
         print(f"  Features CSV: {csv_path}")
+
+        # Correlation summary (print to stdout for workflow review)
+        print_correlation_summary(df, mode)
 
         # Correlation analysis
         plot_correlation_matrix(df, mode, OUTPUT_DIR)
