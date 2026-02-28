@@ -360,31 +360,52 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
     valid = valid.copy()
     valid["speed_quartile"] = pd.qcut(valid[speed_key], q=4, labels=["Q1\n(slowest)", "Q2", "Q3", "Q4\n(fastest)"])
 
-    n_metrics = len(available)
-    fig, axes = plt.subplots(1, n_metrics, figsize=(5 * n_metrics, 5))
+    # Readable labels for each metric
+    metric_labels = {
+        "llb_ankle_velocity_delta": "Ankle Braking\n(velocity change at foot strike, mm/s)",
+        "llb_knee_ext_peak_velocity": "Knee Extension Speed\n(how fast the knee straightens, deg/s)",
+        "llb_ankle_velocity_at_strike": "Ankle Speed at Foot Strike\n(mm/s)",
+        "llb_ankle_velocity_post_strike": "Ankle Speed After Foot Strike\n(mm/s)",
+        "llb_ankle_braking_decel": "Ankle Deceleration\n(braking force, mm/s²)",
+        "llb_knee_angle_at_strike": "Knee Angle at Foot Strike\n(degrees)",
+        "llb_knee_extension_range": "Knee Extension Range\n(degrees of straightening)",
+    }
+
+    # Focus on the two most important metrics
+    key_metrics = [c for c in ["llb_ankle_velocity_delta", "llb_knee_ext_peak_velocity"]
+                   if c in available]
+    if not key_metrics:
+        key_metrics = available[:2]
+
+    n_metrics = len(key_metrics)
+    fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 6))
     if n_metrics == 1:
         axes = [axes]
 
     colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c"]
 
-    for ax, col in zip(axes, available):
+    for ax, col in zip(axes, key_metrics):
         grouped = valid.groupby("speed_quartile", observed=True)[col].mean()
         bars = ax.bar(range(len(grouped)), grouped.values, color=colors[:len(grouped)],
-                      edgecolor="black", linewidth=0.5)
+                      edgecolor="black", linewidth=0.5, width=0.7)
         ax.set_xticks(range(len(grouped)))
-        ax.set_xticklabels(grouped.index, fontsize=9)
-        ax.set_ylabel(col.replace("llb_", "").replace("_", " ").title())
-        ax.set_title(col.replace("llb_", "").replace("_", " ").title())
+        ax.set_xticklabels(grouped.index, fontsize=12)
+        label = metric_labels.get(col, col.replace("llb_", "").replace("_", " ").title())
+        ax.set_ylabel(label.split("\n")[0], fontsize=12)
+        ax.set_title(label, fontsize=13, fontweight="bold")
         ax.grid(True, alpha=0.3, axis="y")
 
         # Add value labels on bars
         for bar, val in zip(bars, grouped.values):
             if not np.isnan(val):
                 ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                        f"{val:.0f}", ha="center", va="bottom", fontsize=8)
+                        f"{val:.0f}", ha="center", va="bottom", fontsize=12,
+                        fontweight="bold")
 
     speed_label = "Pitch Speed" if mode == "pitching" else "Exit Velocity"
-    fig.suptitle(f"Lead Leg Block Metrics by {speed_label} Quartile — Driveline OBP", fontsize=13)
+    fig.suptitle(f"Do Faster Pitchers Block Harder?\n"
+                 f"Lead Leg Block metrics by {speed_label} quartile (Driveline OBP)",
+                 fontsize=15, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     path = output_dir / f"llb_profile_{mode}.png"
