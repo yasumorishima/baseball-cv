@@ -47,7 +47,7 @@ def is_lead_leg(m1, m2):
 
 
 def collect_llb_candidates(n_samples=40):
-    """Download C3D files and find best/worst LLB by knee ext velocity."""
+    """Download C3D files, extract LLB features, sort by stride length/height."""
     download_additional_samples("pitching", n_samples)
     results = []
     for fpath in sorted(RAW_DIR.glob("*.c3d")):
@@ -59,15 +59,20 @@ def collect_llb_candidates(n_samples=40):
             llb = compute_lead_leg_block_features(markers, rate, side="L")
             if not llb:
                 continue
+
+            stride = llb.get("llb_stride_length", 0)
+            height_mm = meta["height_in"] * 25.4
+            stride_norm = stride / height_mm if height_mm > 0 else 0
+
             results.append({
                 "filename": fpath.name,
                 "pitch_speed_mph": meta["pitch_speed_mph"],
-                "llb_knee_ext_peak_velocity": llb.get("llb_knee_ext_peak_velocity", 0),
+                "stride_norm": stride_norm,
                 "llb_foot_strike_frame": llb.get("llb_foot_strike_frame"),
             })
         except Exception as e:
             print(f"  Skip {fpath.name}: {e}")
-    results.sort(key=lambda r: r["llb_knee_ext_peak_velocity"])
+    results.sort(key=lambda r: r["stride_norm"])
     return results
 
 
@@ -207,8 +212,8 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     def draw_graph(ax, frame_num):
         ax.clear()
         # Plot elbow angular velocity over time
-        ax.plot(common_time, ev_s_interp, color="#2980b9", linewidth=2.5, label="Strong Block")
-        ax.plot(common_time, ev_w_interp, color="#e67e22", linewidth=2.5, label="Weak Block")
+        ax.plot(common_time, ev_s_interp, color="#2980b9", linewidth=2.5, label="Long Stride")
+        ax.plot(common_time, ev_w_interp, color="#e67e22", linewidth=2.5, label="Short Stride")
         ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--",
                    alpha=0.7, label="Foot Strike")
         ax.axhline(0, color="gray", linewidth=0.5, alpha=0.5)
@@ -249,10 +254,10 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
         is_post = frame_num > fs_gif + 3
 
         draw_skeleton(ax_s, labels_s, points_s, fi_s, b_s, "#2980b9",
-                      "Strong Block", strong_meta["pitch_speed_mph"],
+                      "Long Stride", strong_meta["pitch_speed_mph"],
                       a_s, v_s, is_fs, is_post, True)
         draw_skeleton(ax_w, labels_w, points_w, fi_w, b_w, "#e67e22",
-                      "Weak Block", weak_meta["pitch_speed_mph"],
+                      "Short Stride", weak_meta["pitch_speed_mph"],
                       a_w, v_w, is_fs, is_post, False)
         draw_graph(ax_g, frame_num)
 
@@ -300,18 +305,18 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
 
         # Post-strike explanations
         if is_post:
-            t7 = fig.text(0.35, 0.28, "Knee extends \u2192 faster arm \u2191",
+            t7 = fig.text(0.35, 0.28, "Longer stride \u2192 faster arm \u2191",
                           fontsize=11, fontweight="bold", color="#27ae60",
                           bbox=dict(boxstyle="round,pad=0.3", facecolor="#eafaf1",
                                     edgecolor="#27ae60", alpha=0.95))
             overlay_texts.append(t7)
-            t8 = fig.text(0.78, 0.28, "Knee stays bent \u2192 slower arm \u2193",
+            t8 = fig.text(0.78, 0.28, "Shorter stride \u2192 slower arm \u2193",
                           fontsize=11, fontweight="bold", color="#c0392b",
                           bbox=dict(boxstyle="round,pad=0.3", facecolor="#fdedec",
                                     edgecolor="#c0392b", alpha=0.95))
             overlay_texts.append(t8)
 
-        fig.suptitle("Lead Leg Block \u2192 Arm Speed\n"
+        fig.suptitle("Stride Length \u2192 Arm Speed\n"
                      "Red = lead leg | Graph = elbow angular velocity",
                      fontsize=14, fontweight="bold", y=0.99)
 
@@ -339,12 +344,12 @@ def main():
     weak = results[0]
     strong = results[-1]
 
-    print(f"\n  Strong: {strong['filename']} "
+    print(f"\n  Long stride:  {strong['filename']} "
           f"({strong['pitch_speed_mph']:.1f} mph, "
-          f"knee ext vel={strong['llb_knee_ext_peak_velocity']:.0f} deg/s)")
-    print(f"  Weak:   {weak['filename']} "
+          f"stride/height={strong['stride_norm']:.3f})")
+    print(f"  Short stride: {weak['filename']} "
           f"({weak['pitch_speed_mph']:.1f} mph, "
-          f"knee ext vel={weak['llb_knee_ext_peak_velocity']:.0f} deg/s)")
+          f"stride/height={weak['stride_norm']:.3f})")
 
     print("\nGenerating knee detail GIF...")
     create_knee_detail_gif(

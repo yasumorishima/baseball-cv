@@ -45,7 +45,11 @@ def is_lead_leg_connection(m1, m2):
 
 
 def collect_llb_features(n_samples=40):
-    """Download C3D files and extract LLB features, return sorted list."""
+    """Download C3D files and extract LLB features, return sorted list.
+
+    Sorted by stride length normalized by height (the strongest correlate
+    with arm speed that survived sample size increase).
+    """
     download_additional_samples("pitching", n_samples)
 
     results = []
@@ -60,11 +64,17 @@ def collect_llb_features(n_samples=40):
             if not llb:
                 continue
 
+            # Stride length normalized by height
+            stride = llb.get("llb_stride_length", 0)
+            height_mm = meta["height_in"] * 25.4
+            stride_norm = stride / height_mm if height_mm > 0 else 0
+
             results.append({
                 "filename": fpath.name,
                 "pitch_speed_mph": meta["pitch_speed_mph"],
-                "llb_ankle_velocity_delta": llb.get("llb_ankle_velocity_delta", 0),
-                "llb_knee_ext_peak_velocity": llb.get("llb_knee_ext_peak_velocity", 0),
+                "height_in": meta["height_in"],
+                "stride_norm": stride_norm,
+                "stride_mm": stride,
                 "llb_foot_strike_frame": llb.get("llb_foot_strike_frame"),
             })
         except Exception as e:
@@ -183,11 +193,11 @@ def create_comparison_gif(strong_file, weak_file, strong_meta, weak_meta, output
         is_fs = abs(frame_num - fs_gif_frame) <= 1
 
         draw_skeleton(ax_strong, labels_s, points_s, fi_s, bounds_s,
-                      is_fs, "Strong Block", strong_meta)
+                      is_fs, "Long Stride", strong_meta)
         draw_skeleton(ax_weak, labels_w, points_w, fi_w, bounds_w,
-                      is_fs, "Weak Block", weak_meta)
+                      is_fs, "Short Stride", weak_meta)
 
-        fig.suptitle("Lead Leg Block Comparison — Driveline OBP\n"
+        fig.suptitle("Stride Length Comparison — Driveline OBP\n"
                      "Red = Lead Leg", fontsize=13, y=0.98)
 
     anim = animation.FuncAnimation(fig, update, frames=n_anim, interval=80)
@@ -210,18 +220,18 @@ def main():
         print(f"Need at least 2 samples with LLB features, got {len(results)}")
         return
 
-    # Sort by knee extension peak velocity (higher = stronger block)
-    results.sort(key=lambda r: r["llb_knee_ext_peak_velocity"])
+    # Sort by stride length / height (stronger correlate with arm speed)
+    results.sort(key=lambda r: r["stride_norm"])
 
-    weak = results[0]
-    strong = results[-1]
+    weak = results[0]   # shortest stride
+    strong = results[-1]  # longest stride
 
-    print(f"\n  Strong block: {strong['filename']} "
+    print(f"\n  Long stride:  {strong['filename']} "
           f"({strong['pitch_speed_mph']:.1f} mph, "
-          f"knee ext vel={strong['llb_knee_ext_peak_velocity']:.0f} deg/s)")
-    print(f"  Weak block:   {weak['filename']} "
+          f"stride/height={strong['stride_norm']:.3f})")
+    print(f"  Short stride: {weak['filename']} "
           f"({weak['pitch_speed_mph']:.1f} mph, "
-          f"knee ext vel={weak['llb_knee_ext_peak_velocity']:.0f} deg/s)")
+          f"stride/height={weak['stride_norm']:.3f})")
 
     strong_file = RAW_DIR / strong["filename"]
     weak_file = RAW_DIR / weak["filename"]

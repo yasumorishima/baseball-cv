@@ -77,21 +77,15 @@ The strongest correlations with elbow angular velocity (arm speed):
 
 Stride length (relative to height) and trunk rotation timing correlate with arm speed, while position-based braking metrics (knee forward velocity, pelvis deceleration) show weak effects that did not survive increasing the sample size from n=25 to n=35.
 
-**Strong vs Weak Lead Leg Block** — skeleton animation comparison (lead leg in red):
+**Long vs Short Stride** — skeleton animation comparison (lead leg in red), selected by stride length / height:
 
 ![LLB Comparison](data/output/llb_comparison.gif)
 
-| | Strong Block | Weak Block |
-|---|---|---|
-| Pitch Speed | 88.9 mph | 80.9 mph |
-| Knee Angle at Foot Strike | 141.5° (bent) | 175.5° (nearly straight) |
-| Knee Extension After Strike | +37.7° (actively extends) | +0.0° (no extension) |
-
-The animated GIF compares the two most extreme cases (selected by knee extension behavior). While the visual difference is dramatic, the population-level correlation between knee extension and pitch speed is weak — suggesting the extreme cases are outliers, not representative of a general trend.
-
-**Lead Leg Block → Arm Speed** — full-body skeleton with elbow angular velocity graph:
+**Stride Length → Arm Speed** — full-body skeleton with elbow angular velocity graph:
 
 ![Knee Detail](data/output/llb_knee_detail.gif)
+
+The pitcher with a longer stride (relative to height) generates faster elbow angular velocity. This is consistent with the population-level correlation (r=+0.39, p=0.023, n=34).
 
 **Key takeaway**: Pitch speed is the final output of a complex chain. Body mechanics (knee flexion, stride length, trunk rotation) directly drive arm speed, but the link from arm speed to pitch speed depends on additional factors (release point, finger mechanics, ball grip) that motion capture alone cannot measure.
 
