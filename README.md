@@ -16,23 +16,61 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 
 ### Step 1: 3D Skeleton Visualization (ezc3d)
 
-Driveline OpenBiomechanics Project C3D files loaded with ezc3d and rendered as 3D stick figures.
+C3D files store 3D marker coordinates captured by optical motion capture. Each frame records the XYZ position of every marker attached to the athlete's body.
+
+- **Pitching data**: 45 markers, 360 Hz, ~726 frames per trial
+- **Hitting data**: 55 markers (45 body + 10 bat), 360 Hz, ~804 frames per trial
+
+ezc3d loads the binary C3D format and returns arrays ready for NumPy/matplotlib:
+
+```python
+import ezc3d
+
+c3d = ezc3d.c3d("pitching_sample.c3d")
+points = c3d["data"]["points"]  # shape: (4, n_markers, n_frames)
+labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
+```
 
 **Pitching motion** (45 body markers, 360 Hz):
 
 ![Pitching Skeleton](data/output/skeleton_pitching_anim.gif)
 
+Wind-up → stride → arm acceleration → ball release, rendered as a 3D stick figure.
+
 **Hitting motion** (45 body + 10 bat markers, 360 Hz):
 
 ![Hitting Skeleton](data/output/skeleton_hitting_anim.gif)
 
+The 10 bat markers (red) are rendered separately from the body skeleton, making bat path visible alongside the hitter's kinematics.
+
 > I contributed a bug fix to ezc3d ([PR #384](https://github.com/pyomeca/ezc3d/pull/384)) — fixing an `__eq__` early return bug — and then used the library for this analysis.
 
-### Step 3: Kinematic Sequence
+---
 
-Joint angles extracted from C3D motion capture data across the full pitching/hitting motion.
+### Step 2: Video-Based Skeleton Detection (MediaPipe)
 
-**Pitching — Joint Angles:**
+For setups without C3D equipment, Google's MediaPipe Pose detects 33 skeletal landmarks from standard video in real time.
+
+```python
+import mediapipe as mp
+
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
+```
+
+Outputs a keypoint CSV and an annotated video overlay. Steps 3–5 use C3D data, but MediaPipe is a practical entry point when professional equipment isn't available.
+
+---
+
+### Step 3: Joint Angle & Angular Velocity Extraction
+
+Joint angles (how much each joint opens/closes) and angular velocities (how fast each joint rotates, in degrees/sec) are computed frame-by-frame from the C3D marker positions.
+
+**Pitching — Joint Angles across full motion:**
 
 ![Kinematic Sequence](data/output/kinematic_sequence_pitching.png)
 
@@ -43,9 +81,24 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 | Trunk Rotation | 0.0° | 58.0° | 57.9° |
 | Knee Flexion (R) | 99.1° | 163.8° | 64.7° |
 
-**Angular Velocities:**
+Elbow flexion spans ~106° — the arm goes from nearly straight at extension to sharply bent near max external rotation, then extends again at release. Trunk rotation (58°) appears modest by comparison, but emerges as the strongest correlate of pitch velocity in Step 4.
+
+**Angular Velocities — when does each joint move fastest?**
 
 ![Angular Velocity](data/output/angular_velocity_pitching.png)
+
+The time-series shows each joint's rotational speed per frame. This reveals the proximal-to-distal kinematic sequence: hips and trunk rotate first, followed by the shoulder, then elbow and wrist.
+
+**Pitch speed correlation (16 pitchers, Step 4 preview):**
+
+| Feature | r | p-value |
+|---------|---|---------|
+| Peak Trunk Angular Velocity | 0.119 | 0.673 |
+| Peak Elbow Angular Velocity | 0.094 | 0.739 |
+| Peak Shoulder Abduction | 0.180 | 0.520 |
+| **Trunk Rotation Range** | **0.425** | **0.114** |
+
+With 16 samples the p-values don't reach significance, but trunk rotation range shows the strongest correlation (r=0.425). Step 4–5 expand this with 60 pitchers.
 
 ### Step 4–5: Efficient Throwing — Body Mechanics Analysis
 
