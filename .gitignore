@@ -3,8 +3,11 @@ data/videos/*.mp4
 data/videos/*.avi
 data/videos/*.mov
 
-# Downloaded C3D files (keep only the 2 samples)
+# Downloaded C3D files (keep only the samples)
 data/raw/000*.c3d
+# GIF comparison pair - tracked for GitHub Actions
+!data/raw/000870_003252_74_195_002_FF_808.c3d
+!data/raw/000874_001562_73_211_003_FF_918.c3d
 data/raw/pitching_metadata.csv
 data/raw/hitting_metadata.csv
 
