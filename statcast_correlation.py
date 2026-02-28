@@ -31,6 +31,7 @@ from skeleton_analysis import (
     compute_lead_leg_block_features,
     compute_shoulder_abduction,
     compute_smoothness_features,
+    compute_whip_features,
     compute_trunk_rotation,
     load_c3d,
 )
@@ -128,6 +129,10 @@ def extract_peak_features(markers, rate, mode="pitching"):
     # Smoothness, acceleration, kinematic sequence
     smooth = compute_smoothness_features(markers, rate, side=side)
     features.update(smooth)
+
+    # Arm whip (しなり): elbow → wrist → finger speed amplification
+    whip = compute_whip_features(markers, rate, side=side)
+    features.update(whip)
 
     return features
 

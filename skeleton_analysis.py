@@ -492,6 +492,55 @@ def compute_timing_features(markers, foot_strike_frame, rate, side="L"):
     return result
 
 
+def compute_whip_features(markers, rate, side="R"):
+    """Compute arm whip (しなり) features from linear velocities.
+
+    Measures speed amplification along the arm: elbow → wrist → finger.
+    Higher ratios = more whip-like energy transfer.
+    """
+    result = {}
+
+    def linear_speed(marker_data):
+        v = np.gradient(marker_data, axis=1) * rate
+        return np.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+
+    elb = markers.get(f"{side}ELB")
+    wra = markers.get(f"{side}WRA")
+    fin = markers.get(f"{side}FIN")
+
+    if elb is None or wra is None or fin is None:
+        return result
+
+    elb_speed = linear_speed(elb)
+    wra_speed = linear_speed(wra)
+    fin_speed = linear_speed(fin)
+
+    peak_elb = float(np.nanmax(elb_speed))
+    peak_wra = float(np.nanmax(wra_speed))
+    peak_fin = float(np.nanmax(fin_speed))
+
+    result["peak_elbow_linear_speed"] = peak_elb
+    result["peak_wrist_linear_speed"] = peak_wra
+    result["peak_finger_linear_speed"] = peak_fin
+
+    # Whip ratios (speed amplification)
+    if peak_elb > 0:
+        result["whip_wrist_elbow"] = peak_wra / peak_elb
+        result["whip_finger_elbow"] = peak_fin / peak_elb
+    if peak_wra > 0:
+        result["whip_finger_wrist"] = peak_fin / peak_wra
+
+    # Timing delays (ms between peak velocities)
+    t_elb = int(np.nanargmax(elb_speed))
+    t_wra = int(np.nanargmax(wra_speed))
+    t_fin = int(np.nanargmax(fin_speed))
+    result["whip_delay_elbow_to_wrist"] = float((t_wra - t_elb) / rate)
+    result["whip_delay_wrist_to_finger"] = float((t_fin - t_wra) / rate)
+    result["whip_delay_elbow_to_finger"] = float((t_fin - t_elb) / rate)
+
+    return result
+
+
 def compute_smoothness_features(markers, rate, side="R"):
     """Compute movement smoothness, acceleration, and kinematic sequence features.
 
