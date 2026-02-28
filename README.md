@@ -54,7 +54,7 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 ![Head Stability Scatter](data/output/head_stability_scatter.png)
 
-The human head weighs ~5 kg. Braking has an optimal range — too weak and the head drifts, too strong and it jerks (quadratic R² = 0.58, vs linear r = 0.41). When braking is right and the head stabilizes, the trunk reaches peak rotational velocity dramatically faster (r = -0.88).
+The human head weighs ~5 kg. There is an optimal braking level — too weak and the head drifts, too strong and it jerks. Deviation from optimal braking linearly predicts head instability (r = -0.76). When the head is stable, the trunk reaches peak rotational velocity dramatically faster (r = -0.88).
 
 > The same analysis works for hitting (front foot block → bat speed).
 

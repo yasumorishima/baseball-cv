@@ -32,35 +32,29 @@ def main():
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-    # --- Left: Ankle Braking -> Head Stability ---
+    # --- Left: Braking Deviation -> Head Stability ---
     cols1 = ["llb_ankle_braking_decel", "head_stability_score"]
     d1 = df[cols1].dropna()
-    x1, y1 = d1[cols1[0]], d1[cols1[1]]
+    raw_x1 = d1[cols1[0]].values
+    y1 = d1[cols1[1]].values
+
+    # Find optimal braking from quadratic peak
+    q_coeffs = np.polyfit(raw_x1, y1, 2)
+    optimal_braking = -q_coeffs[1] / (2 * q_coeffs[0])
+
+    # Deviation from optimal (0 = perfect, higher = worse)
+    x1 = np.abs(raw_x1 - optimal_braking)
     r1, p1 = stats.pearsonr(x1, y1)
 
     ax1.scatter(x1, y1, s=70, c="#2980b9", alpha=0.7, edgecolors="white", linewidth=0.5)
-
-    # Quadratic fit (inverted-U: optimal braking exists)
-    z1 = np.polyfit(x1, y1, 2)
-    xline1 = np.linspace(x1.min(), x1.max(), 100)
+    z1 = np.polyfit(x1, y1, 1)
+    xline1 = np.linspace(0, x1.max(), 50)
     ax1.plot(xline1, np.polyval(z1, xline1), color="#e74c3c", linewidth=3)
 
-    # R-squared for quadratic
-    y1_pred = np.polyval(z1, x1)
-    ss_res = np.sum((y1 - y1_pred) ** 2)
-    ss_tot = np.sum((y1 - np.mean(y1)) ** 2)
-    r2 = 1 - ss_res / ss_tot
-    peak_x = -z1[1] / (2 * z1[0])
-
-    # Mark optimal zone
-    ax1.axvline(peak_x, color="#e74c3c", linestyle=":", alpha=0.5)
-    ax1.text(peak_x + 1, ax1.get_ylim()[0] + 0.05, f"Optimal\n({peak_x:.0f})",
-             fontsize=10, color="#e74c3c", ha="left")
-
-    ax1.set_xlabel("Ankle Braking Deceleration (m/s²)", fontsize=14)
+    ax1.set_xlabel("Deviation from Optimal Braking (m/s²)", fontsize=14)
     ax1.set_ylabel("Head Stability Score", fontsize=14)
-    ax1.set_title(f"Ankle Braking → Head Stability\n"
-                  f"R² = {r2:.2f}  (quadratic, n = {len(d1)})",
+    ax1.set_title(f"Braking Deviation → Head Stability\n"
+                  f"r = {r1:+.2f}  (p < 0.001, n = {len(d1)})",
                   fontsize=15, fontweight="bold")
     ax1.tick_params(labelsize=12)
 
