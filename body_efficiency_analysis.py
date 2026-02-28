@@ -179,8 +179,13 @@ def plot_breakdown(df, out_path):
     ax1.legend(fontsize=10)
     for xi, (z1, z5) in enumerate(zip(q1_z, q5_z)):
         for val, offset in [(z1, -w / 2), (z5, +w / 2)]:
-            ax1.text(xi + offset, val + (0.05 if val >= 0 else -0.13),
-                     f"{val:+.2f}", ha="center", fontsize=9)
+            if val >= 0:
+                y_text = val + 0.05          # above bar
+            elif val > -0.45:
+                y_text = val - 0.13          # below bar
+            else:
+                y_text = val + 0.12          # inside bar (avoids x-label overlap)
+            ax1.text(xi + offset, y_text, f"{val:+.2f}", ha="center", fontsize=9)
 
     d_plot = df[["peak_wrist_linear_speed", TARGET, "eff_q"]].dropna()
     cmap = {"Q1": "#e74c3c", "Q2": "#e67e22", "Q3": "#f1c40f",

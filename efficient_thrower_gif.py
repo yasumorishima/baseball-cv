@@ -40,12 +40,12 @@ Q5_FILE = "000874_001562_73_211_003_FF_918.c3d"
 Q1_META = {
     "pitch_speed_mph": 80.8, "arm_speed": 26.56,
     "stride_m": 0.30, "body_efficiency": -6.58,
-    "llb_foot_strike_frame": 515,
+    "llb_foot_strike_frame": 546,  # vel=0 crossing (was 515, mid-descent at -0.8 m/s)
 }
 Q5_META = {
     "pitch_speed_mph": 91.8, "arm_speed": 24.96,
     "stride_m": 0.89, "body_efficiency": +7.17,
-    "llb_foot_strike_frame": 384,
+    "llb_foot_strike_frame": 387,  # vel≈0 (-0.0007 m/s), refined from 384
 }
 
 # Lead leg (left = lead leg for right-handed pitcher)
