@@ -9,8 +9,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 1 | `skeleton_c3d.py` | Load Driveline OBP C3D files with [ezc3d](https://github.com/pyomeca/ezc3d) → 3D skeleton visualization & animation |
 | 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
-| 4 | `statcast_correlation.py` | Multi-athlete biomechanical feature extraction (60 pitchers, auto-detect throwing arm) |
-| 5 | `head_stability_analysis.py` | Movement quality chain: braking → head stability → trunk transfer |
+| 4–5 | `statcast_correlation.py` `head_stability_analysis.py` | Movement quality chain: braking → head stability → trunk transfer (60 pitchers) |
 
 ## Results
 
@@ -47,43 +46,17 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 ![Angular Velocity](data/output/angular_velocity_pitching.png)
 
-### Step 4: Biomechanical Feature Extraction (60 Athletes)
+### Step 4–5: Head Stability — The Core of Pitching Mechanics
 
-60 Driveline OBP pitchers (71.3–93.1 mph), throwing arm auto-detected by comparing left/right elbow angular velocity. 90+ features extracted per pitcher across 6 categories:
+60 Driveline OBP pitchers analyzed. Pitch speed is **not** used as a target — we focus on how the body transfers energy.
 
-- **Braking**: ankle/knee/pelvis deceleration at foot strike, projected onto throwing direction
-- **Head stability**: head forward displacement before/after foot strike
-- **Trunk transfer**: trunk rotation velocity, time from foot strike to peak trunk rotation
-- **Smoothness**: RMS jerk (elbow, trunk, knee), kinematic sequence timing
-- **Whip**: elbow → wrist → finger linear velocity amplification ratio
-- **Release**: finger deceleration after peak speed, wrist snap angular velocity
+**Finding**: Ankle braking → Head stabilizes → Trunk rotation peaks faster
 
-![Correlation Matrix](data/output/movement_quality_matrix.png)
+![Head Stability Scatter](data/output/head_stability_scatter.png)
 
-### Step 5: Head Stability — The Core of Pitching Mechanics
+The human head weighs ~5 kg. When the lead foot brakes and the head stops drifting forward, it becomes a stable axis of rotation. The trunk rotates efficiently around this fixed point, reaching peak velocity faster (r = -0.88).
 
-Pitch speed is a result, not a cause. We analyzed how body segments transfer energy through the kinetic chain, **without using pitch speed as a target variable**.
-
-**The chain**: Ankle braking → Head stabilizes → Trunk rotation peaks faster
-
-![Head Stability Analysis](data/output/head_stability_analysis.png)
-
-| Link | r | p | n |
-|---|---|---|---|
-| Ankle braking → Head stability score | **+0.412** | **0.004** | 49 |
-| Head stability → Time to peak trunk velocity | **-0.878** | **<0.001** | 49 |
-
-**Why the head matters**: The human head weighs ~5 kg. When the lead foot brakes and the head decelerates, it acts as a stable axis of rotation. The trunk can then rotate efficiently around this fixed point, reaching peak rotational velocity faster. When the head drifts forward, the rotation axis shifts and energy dissipates — force "leaks" instead of transferring up the chain.
-
-**Long vs Short Stride** — skeleton animation comparison (lead leg in red):
-
-![LLB Comparison](data/output/llb_comparison.gif)
-
-**Movement Quality Chain** — correlations between body mechanics categories:
-
-![Movement Quality Chain](data/output/movement_quality_chain.png)
-
-> The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
+> The same analysis works for hitting (front foot block → bat speed).
 
 ## Setup
 
