@@ -77,7 +77,7 @@ These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) an
 
 The strong block pitcher lands with a bent knee and actively extends it — transferring ground reaction force up the kinetic chain. The weak block pitcher's knee is already straight at foot strike and doesn't move further.
 
-**Knee extension detail** — full-body skeleton with real-time knee angle overlay and time-series graph:
+**Lead Leg Block → Arm Speed** — full-body skeleton with elbow angular velocity graph:
 
 ![Knee Detail](data/output/llb_knee_detail.gif)
 

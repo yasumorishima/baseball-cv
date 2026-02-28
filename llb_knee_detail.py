@@ -21,6 +21,7 @@ from matplotlib import animation
 
 from skeleton_analysis import (
     compute_angular_velocity,
+    compute_elbow_flexion,
     compute_knee_flexion,
     compute_lead_leg_block_features,
     load_c3d,
@@ -89,13 +90,19 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     fs_s = strong_meta["llb_foot_strike_frame"]
     fs_w = weak_meta["llb_foot_strike_frame"]
 
-    # Knee angles & velocities (from marker dict)
+    # Knee angles & elbow velocities (from marker dict)
     markers_s, _, _ = load_c3d(str(strong_file))
     markers_w, _, _ = load_c3d(str(weak_file))
     knee_s = compute_knee_flexion(markers_s, "L")
     knee_w = compute_knee_flexion(markers_w, "L")
     vel_s = compute_angular_velocity(knee_s, rate_s)
     vel_w = compute_angular_velocity(knee_w, rate_w)
+
+    # Elbow angular velocity for graph (arm speed)
+    elbow_s = compute_elbow_flexion(markers_s, "R")
+    elbow_w = compute_elbow_flexion(markers_w, "R")
+    elbow_vel_s = compute_angular_velocity(elbow_s, rate_s)
+    elbow_vel_w = compute_angular_velocity(elbow_w, rate_w)
 
     # Time window: 0.5s pre / 0.4s post foot strike
     pre_sec = 0.5
@@ -115,11 +122,11 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     # Graph data — use common time axis so both dots move in sync
     common_time = np.linspace(-pre_sec, post_sec, n_anim)
 
-    # Interpolate knee angles onto common time axis (no NaN gaps, dots on lines)
+    # Interpolate elbow angular velocity onto common time axis
     gt_s_raw = (np.arange(start_s, end_s) - fs_s) / rate_s
     gt_w_raw = (np.arange(start_w, end_w) - fs_w) / rate_w
-    gk_s_interp = np.interp(common_time, gt_s_raw, knee_s[start_s:end_s])
-    gk_w_interp = np.interp(common_time, gt_w_raw, knee_w[start_w:end_w])
+    ev_s_interp = np.interp(common_time, gt_s_raw, elbow_vel_s[start_s:end_s])
+    ev_w_interp = np.interp(common_time, gt_w_raw, elbow_vel_w[start_w:end_w])
 
     # Global bounds for 3D views
     def bounds(pts):
@@ -199,26 +206,27 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
 
     def draw_graph(ax, frame_num):
         ax.clear()
-        # Plot interpolated lines on common time axis (no NaN gaps)
-        ax.plot(common_time, gk_s_interp, color="#2980b9", linewidth=2.5, label="Strong Block")
-        ax.plot(common_time, gk_w_interp, color="#e67e22", linewidth=2.5, label="Weak Block")
+        # Plot elbow angular velocity over time
+        ax.plot(common_time, ev_s_interp, color="#2980b9", linewidth=2.5, label="Strong Block")
+        ax.plot(common_time, ev_w_interp, color="#e67e22", linewidth=2.5, label="Weak Block")
         ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--",
-                   alpha=0.7, label="Foot Strike (front foot lands)")
+                   alpha=0.7, label="Foot Strike")
+        ax.axhline(0, color="gray", linewidth=0.5, alpha=0.5)
 
         # Dots on the lines at the same X position
         t_now = common_time[frame_num]
-        ax.scatter(t_now, gk_s_interp[frame_num],
+        ax.scatter(t_now, ev_s_interp[frame_num],
                    s=150, c="#2980b9", zorder=5, edgecolors="black", linewidths=2)
-        ax.scatter(t_now, gk_w_interp[frame_num],
+        ax.scatter(t_now, ev_w_interp[frame_num],
                    s=150, c="#e67e22", zorder=5, edgecolors="black", linewidths=2)
 
         ax.set_xlabel("Time (seconds)  \u2190 before foot strike | after foot strike \u2192",
                       fontsize=12, fontweight="bold")
-        ax.set_ylabel("Knee Angle (\u00b0)\n\u2191 straight (180\u00b0)\n\u2193 bent (90\u00b0)",
+        ax.set_ylabel("Elbow Angular Velocity (\u00b0/s)\n\u2191 faster arm action",
                       fontsize=11, fontweight="bold")
-        ax.set_title("Lead Knee Angle Over Time \u2014 strong block = knee extends after foot strike",
+        ax.set_title("Elbow Speed Over Time \u2014 does leg block drive arm speed?",
                       fontsize=12, fontweight="bold", color="#2c3e50")
-        ax.legend(loc="lower right", fontsize=10, framealpha=0.9)
+        ax.legend(loc="upper left", fontsize=10, framealpha=0.9)
         ax.grid(True, alpha=0.3)
         ax.set_xlim(-pre_sec - 0.02, post_sec + 0.02)
 
@@ -292,19 +300,19 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
 
         # Post-strike explanations
         if is_post:
-            t7 = fig.text(0.35, 0.28, "Knee extends \u2192 energy up \u2191",
+            t7 = fig.text(0.35, 0.28, "Knee extends \u2192 faster arm \u2191",
                           fontsize=11, fontweight="bold", color="#27ae60",
                           bbox=dict(boxstyle="round,pad=0.3", facecolor="#eafaf1",
                                     edgecolor="#27ae60", alpha=0.95))
             overlay_texts.append(t7)
-            t8 = fig.text(0.78, 0.28, "Knee stays bent \u2192 energy lost \u2193",
+            t8 = fig.text(0.78, 0.28, "Knee stays bent \u2192 slower arm \u2193",
                           fontsize=11, fontweight="bold", color="#c0392b",
                           bbox=dict(boxstyle="round,pad=0.3", facecolor="#fdedec",
                                     edgecolor="#c0392b", alpha=0.95))
             overlay_texts.append(t8)
 
-        fig.suptitle("Lead Leg Block \u2014 Full Skeleton with Knee Extension\n"
-                     "Red = lead leg",
+        fig.suptitle("Lead Leg Block \u2192 Arm Speed\n"
+                     "Red = lead leg | Graph = elbow angular velocity",
                      fontsize=14, fontweight="bold", y=0.99)
 
     print("  Rendering animation...")
