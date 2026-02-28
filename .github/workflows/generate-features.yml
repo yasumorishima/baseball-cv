@@ -1,0 +1,47 @@
+name: Generate Features CSV
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install ezc3d numpy pandas scipy matplotlib scikit-learn pillow
+
+      - name: Cache downloaded C3D files
+        uses: actions/cache@v4
+        with:
+          path: data/raw/*.c3d
+          key: c3d-pitching-v1
+
+      - name: Generate features CSV and plots
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python statcast_correlation.py --mode pitching --download 60
+          python body_efficiency_analysis.py
+
+      - name: Commit and push outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/output/features_pitching.csv \
+                  data/output/correlation_pitching.csv \
+                  data/output/correlation_pitching.png \
+                  data/output/scatter_pitching.png \
+                  data/output/llb_profile_pitching.png \
+                  data/output/efficient_throwing_story.png \
+                  data/output/body_efficiency_breakdown.png
+          git diff --staged --quiet || git commit -m "ci: regenerate features and efficiency plots [skip ci]"
+          git push
