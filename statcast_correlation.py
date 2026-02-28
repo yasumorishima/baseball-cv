@@ -496,9 +496,9 @@ def print_correlation_summary(df, mode):
                 continue
             r, p = stats.pearsonr(valid[feat], valid[target])
 
-            # Partial correlation controlling for height
+            # Partial correlation controlling for height (skip if feat IS height)
             r_partial = None
-            if "height_in" in df.columns:
+            if "height_in" in df.columns and feat != "height_in":
                 r_partial, _ = partial_corr(df, feat, target, "height_in")
 
             results.append((feat, r, p, len(valid), r_partial))
