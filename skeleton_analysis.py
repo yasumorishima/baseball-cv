@@ -492,6 +492,95 @@ def compute_timing_features(markers, foot_strike_frame, rate, side="L"):
     return result
 
 
+def compute_smoothness_features(markers, rate, side="R"):
+    """Compute movement smoothness, acceleration, and kinematic sequence features.
+
+    Measures:
+    - Angular acceleration (peak) for elbow, trunk, shoulder
+    - RMS jerk (smoothness) for elbow angle and knee position
+    - Kinematic sequence: proximal-to-distal peak velocity timing
+      (pelvis → trunk → shoulder → elbow)
+    """
+    result = {}
+    lead_side = "L" if side == "R" else "R"
+
+    # --- Angular acceleration & jerk ---
+    for name, compute_fn, s in [
+        ("elbow", compute_elbow_flexion, side),
+        ("trunk", compute_trunk_rotation, None),
+        ("shoulder", compute_shoulder_abduction, side),
+    ]:
+        angle = compute_fn(markers, s) if s else compute_fn(markers)
+        if angle is None:
+            continue
+        vel = compute_angular_velocity(angle, rate)
+        accel = np.gradient(vel) * rate  # deg/s²
+        jerk = np.gradient(accel) * rate  # deg/s³
+        result[f"{name}_peak_accel"] = float(np.nanmax(np.abs(accel)))
+        result[f"{name}_rms_jerk"] = float(np.sqrt(np.nanmean(jerk ** 2)))
+
+    # --- Knee positional jerk (lead leg, 3D) ---
+    kne = markers.get(f"{lead_side}KNE")
+    if kne is not None and kne.shape[1] > 4:
+        jerk_sq = np.zeros(kne.shape[1])
+        for d in range(3):
+            vel_d = np.gradient(kne[d, :]) * rate
+            acc_d = np.gradient(vel_d) * rate
+            jrk_d = np.gradient(acc_d) * rate
+            jerk_sq += jrk_d ** 2
+        result["knee_pos_rms_jerk"] = float(np.sqrt(np.nanmean(jerk_sq)))
+
+    # --- Kinematic sequence: peak velocity timing ---
+    timings = {}
+
+    # Pelvis linear speed
+    lasi = markers.get("LASI")
+    rasi = markers.get("RASI")
+    if lasi is not None and rasi is not None:
+        pelvis_xy = (lasi[:2, :] + rasi[:2, :]) / 2
+        pv = np.gradient(pelvis_xy, axis=1) * rate
+        pelvis_speed = np.sqrt(pv[0] ** 2 + pv[1] ** 2)
+        timings["pelvis"] = int(np.nanargmax(pelvis_speed))
+
+    trunk_angle = compute_trunk_rotation(markers)
+    if trunk_angle is not None:
+        tv = compute_angular_velocity(trunk_angle, rate)
+        timings["trunk"] = int(np.nanargmax(np.abs(tv)))
+
+    shoulder_angle = compute_shoulder_abduction(markers, side)
+    if shoulder_angle is not None:
+        sv = compute_angular_velocity(shoulder_angle, rate)
+        timings["shoulder"] = int(np.nanargmax(np.abs(sv)))
+
+    elbow_angle = compute_elbow_flexion(markers, side)
+    if elbow_angle is not None:
+        ev = compute_angular_velocity(elbow_angle, rate)
+        timings["elbow"] = int(np.nanargmax(np.abs(ev)))
+
+    # Sequence gaps (seconds between peak velocities)
+    seq_order = ["pelvis", "trunk", "shoulder", "elbow"]
+    available = [s for s in seq_order if s in timings]
+    prev = None
+    for seg in available:
+        if prev is not None:
+            gap = (timings[seg] - timings[prev]) / rate
+            result[f"seq_gap_{prev}_to_{seg}"] = float(gap)
+        prev = seg
+
+    # Kinematic sequence score: fraction of pairs in correct order
+    if len(available) >= 3:
+        times = [timings[s] for s in available]
+        correct = sum(1 for i in range(len(times) - 1) if times[i] < times[i + 1])
+        result["kinematic_seq_score"] = float(correct / (len(times) - 1))
+
+    # Total sequence duration
+    if len(available) >= 2:
+        times = [timings[s] for s in available]
+        result["seq_total_duration"] = float((max(times) - min(times)) / rate)
+
+    return result
+
+
 def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
     """Compute all lead leg block features.
 

@@ -30,6 +30,7 @@ from skeleton_analysis import (
     compute_knee_flexion,
     compute_lead_leg_block_features,
     compute_shoulder_abduction,
+    compute_smoothness_features,
     compute_trunk_rotation,
     load_c3d,
 )
@@ -123,6 +124,10 @@ def extract_peak_features(markers, rate, mode="pitching"):
     # Lead leg block features
     llb = compute_lead_leg_block_features(markers, rate, side=lead_side, verbose=True)
     features.update(llb)
+
+    # Smoothness, acceleration, kinematic sequence
+    smooth = compute_smoothness_features(markers, rate, side=side)
+    features.update(smooth)
 
     return features
 
