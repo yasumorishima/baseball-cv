@@ -152,19 +152,29 @@ def create_gif(output_path):
     fs1 = Q1_META["llb_foot_strike_frame"]
     fs5 = Q5_META["llb_foot_strike_frame"]
 
-    pre_sec, post_sec = 0.55, 0.45
-    n_anim = 108
+    # --- Frame ranges: short pre, ALL available post-FS (sync on shorter file) ---
+    pre_sec = 0.25
+    n_total1 = pts1.shape[2]
+    n_total5 = pts5.shape[2]
 
-    def frame_range(fs, rate, n_total):
-        pre = int(pre_sec * rate)
-        post = int(post_sec * rate)
-        start = max(0, fs - pre)
-        end = min(n_total, fs + post)
-        return np.linspace(start, end - 1, n_anim).astype(int)
+    pre1 = min(fs1, int(pre_sec * rate1))
+    pre5 = min(fs5, int(pre_sec * rate5))
+    post1_avail = n_total1 - fs1
+    post5_avail = n_total5 - fs5
+    common_post = min(post1_avail, post5_avail)
 
-    frames1 = frame_range(fs1, rate1, pts1.shape[2])
-    frames5 = frame_range(fs5, rate5, pts5.shape[2])
-    fs_gif = int(pre_sec / (pre_sec + post_sec) * n_anim)
+    print(f"  File lengths: Q1={n_total1} frames ({n_total1/rate1:.2f}s), "
+          f"Q5={n_total5} frames ({n_total5/rate5:.2f}s)")
+    print(f"  Post-FS available: Q1={post1_avail/rate1:.2f}s, "
+          f"Q5={post5_avail/rate5:.2f}s -> using {common_post/rate1:.2f}s")
+
+    total1 = pre1 + common_post
+    n_anim = min(total1, 240)  # cap at 240 for reasonable GIF size
+
+    frames1 = np.linspace(fs1 - pre1, fs1 + common_post - 1, n_anim).astype(int)
+    frames5 = np.linspace(fs5 - pre5, fs5 + common_post - 1, n_anim).astype(int)
+    # fs_gif computed from actual frame positions (not from pre_sec/post_sec ratio)
+    fs_gif = int((pre1 / total1) * n_anim)
 
     bounds1 = compute_bounds(pts1)
     bounds5 = compute_bounds(pts5)
