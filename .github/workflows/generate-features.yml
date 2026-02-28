@@ -44,4 +44,5 @@ jobs:
                   data/output/efficient_throwing_story.png \
                   data/output/body_efficiency_breakdown.png
           git diff --staged --quiet || git commit -m "ci: regenerate features and efficiency plots [skip ci]"
+          git pull --rebase
           git push
