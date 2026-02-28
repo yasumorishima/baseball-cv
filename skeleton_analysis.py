@@ -358,7 +358,7 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
         offset = knee_xy - ankle_xy
         result["knee_ankle_offset"] = float(np.dot(offset, throwing_dir))
 
-    # 2. Knee forward velocity at and after foot strike
+    # 2. Knee forward velocity at and after foot strike (multiple windows)
     if kne is not None:
         vx = np.gradient(kne[0, :]) * rate
         vy = np.gradient(kne[1, :]) * rate
@@ -366,12 +366,15 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
 
         result["knee_forward_vel_at_strike"] = float(v_forward[foot_strike_frame])
 
-        # Average 50ms after foot strike
-        post_frames = int(0.050 * rate)
-        post_end = min(foot_strike_frame + post_frames, n_frames - 1)
-        result["knee_forward_vel_post"] = float(
-            np.mean(v_forward[foot_strike_frame:post_end + 1])
-        )
+        # Multiple time windows after foot strike
+        for window_ms in [25, 50, 100, 150]:
+            w_frames = int(window_ms / 1000.0 * rate)
+            w_end = min(foot_strike_frame + w_frames, n_frames - 1)
+            avg_vel = float(np.mean(v_forward[foot_strike_frame:w_end + 1]))
+            result[f"knee_forward_vel_{window_ms}ms"] = avg_vel
+
+        # Default "post" = 50ms (backward compat)
+        result["knee_forward_vel_post"] = result["knee_forward_vel_50ms"]
 
         # Deceleration (positive = decelerating = braking)
         result["knee_forward_decel"] = (
@@ -416,6 +419,34 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
         c7_xy = c7[:2, foot_strike_frame]
         trunk_lean = c7_xy - pelvis_mid
         result["trunk_forward_lean"] = float(np.dot(trunk_lean, throwing_dir))
+
+    # 6. Stride length at foot strike (plant foot to pivot foot)
+    throw_side = "R" if side == "L" else "L"
+    pivot_ank = markers.get(f"{throw_side}ANK")
+    if ank is not None and pivot_ank is not None:
+        plant_xy = ank[:2, foot_strike_frame]
+        pivot_xy = pivot_ank[:2, foot_strike_frame]
+        stride_vec = plant_xy - pivot_xy
+        result["stride_length"] = float(np.linalg.norm(stride_vec))
+        result["stride_forward"] = float(np.dot(stride_vec, throwing_dir))
+
+    # 7. Pelvis forward velocity and deceleration at foot strike
+    if lasi is not None and rasi is not None:
+        pelvis_xy = (lasi[:2, :] + rasi[:2, :]) / 2
+        pvx = np.gradient(pelvis_xy[0, :]) * rate
+        pvy = np.gradient(pelvis_xy[1, :]) * rate
+        pv_forward = pvx * throwing_dir[0] + pvy * throwing_dir[1]
+
+        result["pelvis_vel_at_strike"] = float(pv_forward[foot_strike_frame])
+
+        post_frames = int(0.050 * rate)
+        post_end = min(foot_strike_frame + post_frames, n_frames - 1)
+        result["pelvis_vel_post"] = float(
+            np.mean(pv_forward[foot_strike_frame:post_end + 1])
+        )
+        result["pelvis_decel"] = (
+            result["pelvis_vel_at_strike"] - result["pelvis_vel_post"]
+        )
 
     return result
 

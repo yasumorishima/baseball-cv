@@ -394,23 +394,92 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
     print(f"  LLB profile: {path}")
 
 
+def add_normalized_features(df):
+    """Add height-normalized versions of position-based features.
+
+    Taller pitchers have longer limbs → raw mm values are biased.
+    Normalizing by height removes body-size confound.
+    """
+    if "height_in" not in df.columns:
+        return df
+
+    df = df.copy()
+    height_mm = df["height_in"] * 25.4  # inches to mm
+
+    # Position features (mm) → normalize by height
+    pos_cols = [c for c in df.columns if c.startswith("llb_") and any(
+        x in c for x in ["offset", "disp", "lean", "stride"]
+    )]
+    for col in pos_cols:
+        df[f"{col}_norm"] = df[col] / height_mm
+
+    # Velocity features (mm/s) → normalize by height
+    vel_cols = [c for c in df.columns if c.startswith("llb_") and any(
+        x in c for x in ["_vel_", "_decel", "pelvis_vel", "pelvis_decel"]
+    )]
+    for col in vel_cols:
+        df[f"{col}_norm"] = df[col] / height_mm
+
+    # BMI
+    if "weight_lb" in df.columns:
+        height_m = df["height_in"] * 0.0254
+        weight_kg = df["weight_lb"] * 0.4536
+        df["bmi"] = weight_kg / (height_m ** 2)
+
+    return df
+
+
+def partial_corr(df, x, y, z):
+    """Compute partial correlation of x and y controlling for z.
+
+    Returns (r_partial, n) or (None, 0) if insufficient data.
+    """
+    valid = df[[x, y, z]].dropna()
+    if len(valid) < 6:
+        return None, 0
+
+    r_xy, _ = stats.pearsonr(valid[x], valid[y])
+    r_xz, _ = stats.pearsonr(valid[x], valid[z])
+    r_yz, _ = stats.pearsonr(valid[y], valid[z])
+
+    denom = np.sqrt((1 - r_xz**2) * (1 - r_yz**2))
+    if denom < 1e-10:
+        return None, 0
+
+    r_partial = (r_xy - r_xz * r_yz) / denom
+    return r_partial, len(valid)
+
+
 def print_correlation_summary(df, mode):
     """Print a ranked summary of correlations for quick review.
 
     Shows correlations of ALL features against:
     - Pitch speed / exit velocity
     - Arm speed metrics (peak elbow/shoulder angular velocity)
+    Also shows partial correlations controlling for height.
     """
     speed_key = "pitch_speed_mph" if mode == "pitching" else "exit_velocity_mph"
     target_cols = [speed_key, "peak_elbow_velocity", "peak_shoulder_velocity"]
 
     # Identify feature columns (everything except metadata)
     skip = {
-        "user_id", "session_id", "height_in", "weight_lb",
+        "user_id", "session_id",
         "pitch_number", "pitch_type", "side", "swing_number",
         "filename", "llb_foot_strike_frame", "llb_foot_strike_time_s",
     }
     feature_cols = [c for c in df.columns if c not in skip and c not in target_cols]
+
+    # Body size summary
+    print(f"\n  {'='*55}")
+    print(f"  Body Size Summary")
+    print(f"  {'='*55}")
+    for col in ["height_in", "weight_lb", "bmi"]:
+        if col in df.columns:
+            valid = df[col].dropna()
+            if len(valid) > 0:
+                print(f"  {col}: mean={valid.mean():.1f}, "
+                      f"std={valid.std():.1f}, "
+                      f"range={valid.min():.1f}-{valid.max():.1f}")
 
     for target in target_cols:
         if target not in df.columns or df[target].isna().all():
@@ -426,16 +495,23 @@ def print_correlation_summary(df, mode):
             if len(valid) < 5:
                 continue
             r, p = stats.pearsonr(valid[feat], valid[target])
-            results.append((feat, r, p, len(valid)))
+
+            # Partial correlation controlling for height
+            r_partial = None
+            if "height_in" in df.columns:
+                r_partial, _ = partial_corr(df, feat, target, "height_in")
+
+            results.append((feat, r, p, len(valid), r_partial))
 
         # Sort by absolute correlation (strongest first)
         results.sort(key=lambda x: abs(x[1]), reverse=True)
 
-        print(f"  {'Feature':<40} {'r':>7} {'p':>8} {'n':>4}")
-        print(f"  {'-'*40} {'-'*7} {'-'*8} {'-'*4}")
-        for feat, r, p, n in results:
+        print(f"  {'Feature':<40} {'r':>7} {'p':>8} {'n':>4}  {'r|h':>6}")
+        print(f"  {'-'*40} {'-'*7} {'-'*8} {'-'*4}  {'-'*6}")
+        for feat, r, p, n, r_p in results:
             sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
-            print(f"  {feat:<40} {r:+.3f} {p:8.4f} {n:4d} {sig}")
+            r_p_str = f"{r_p:+.3f}" if r_p is not None else "  n/a"
+            print(f"  {feat:<40} {r:+.3f} {p:8.4f} {n:4d}  {r_p_str} {sig}")
 
 
 def main():
@@ -471,6 +547,9 @@ def main():
             valid_speed = df[speed_key].dropna()
             if len(valid_speed) > 0:
                 print(f"  Speed range: {valid_speed.min():.1f} - {valid_speed.max():.1f} mph")
+
+        # Add height-normalized features + BMI
+        df = add_normalized_features(df)
 
         # Save features
         csv_path = OUTPUT_DIR / f"features_{mode}.csv"
