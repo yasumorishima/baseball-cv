@@ -212,12 +212,18 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
                    s=150, c="#e67e22", zorder=5, edgecolors="black", linewidths=2)
 
         ax.set_xlabel("Time from Foot Strike (s)", fontsize=11)
-        ax.set_ylabel("Knee Angle (\u00b0)", fontsize=11)
-        ax.set_title("Knee Angle Over Time \u2014 higher = straighter leg",
-                      fontsize=11, fontweight="bold", color="#2c3e50")
+        ax.set_ylabel("Knee Angle (\u00b0)", fontsize=12)
+        ax.set_title("Knee Angle Over Time", fontsize=11, fontweight="bold", color="#2c3e50")
         ax.legend(loc="lower right", fontsize=10)
         ax.grid(True, alpha=0.3)
         ax.set_xlim(-pre_sec - 0.02, post_sec + 0.02)
+
+        # Add straight/bent labels on Y axis
+        ylim = ax.get_ylim()
+        ax.text(-pre_sec - 0.06, ylim[1], "\u2191 straight", fontsize=10,
+                fontweight="bold", color="#27ae60", ha="right", va="top")
+        ax.text(-pre_sec - 0.06, ylim[0], "\u2193 bent", fontsize=10,
+                fontweight="bold", color="#c0392b", ha="right", va="bottom")
 
     # Persistent text objects for overlays
     overlay_texts = []
