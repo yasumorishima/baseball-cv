@@ -64,10 +64,10 @@ def collect_llb_features(n_samples=40):
             if not llb:
                 continue
 
-            # Stride length normalized by height
+            # Stride length normalized by height (C3D data is in meters)
             stride = llb.get("llb_stride_length", 0)
-            height_mm = meta["height_in"] * 25.4
-            stride_norm = stride / height_mm if height_mm > 0 else 0
+            height_m = meta["height_in"] * 0.0254
+            stride_norm = stride / height_m if height_m > 0 else 0
 
             results.append({
                 "filename": fpath.name,

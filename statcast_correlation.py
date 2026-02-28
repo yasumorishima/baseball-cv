@@ -450,21 +450,21 @@ def add_normalized_features(df):
         return df
 
     df = df.copy()
-    height_mm = df["height_in"] * 25.4  # inches to mm
+    height_m = df["height_in"] * 0.0254  # inches to meters (C3D unit)
 
-    # Position features (mm) → normalize by height
+    # Position features (m) → normalize by height
     pos_cols = [c for c in df.columns if c.startswith("llb_") and any(
         x in c for x in ["offset", "disp", "lean", "stride"]
     )]
     for col in pos_cols:
-        df[f"{col}_norm"] = df[col] / height_mm
+        df[f"{col}_norm"] = df[col] / height_m
 
-    # Velocity features (mm/s) → normalize by height
+    # Velocity features (m/s) → normalize by height
     vel_cols = [c for c in df.columns if c.startswith("llb_") and any(
         x in c for x in ["_vel_", "_decel", "pelvis_vel", "pelvis_decel"]
     )]
     for col in vel_cols:
-        df[f"{col}_norm"] = df[col] / height_mm
+        df[f"{col}_norm"] = df[col] / height_m
 
     # BMI
     if "weight_lb" in df.columns:

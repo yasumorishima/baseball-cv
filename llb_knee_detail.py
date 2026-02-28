@@ -61,8 +61,8 @@ def collect_llb_candidates(n_samples=40):
                 continue
 
             stride = llb.get("llb_stride_length", 0)
-            height_mm = meta["height_in"] * 25.4
-            stride_norm = stride / height_mm if height_mm > 0 else 0
+            height_m = meta["height_in"] * 0.0254  # C3D data is in meters
+            stride_norm = stride / height_m if height_m > 0 else 0
 
             results.append({
                 "filename": fpath.name,
