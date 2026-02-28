@@ -334,24 +334,38 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
     """Compute position-based braking features at foot strike.
 
     Measures joint POSITIONS relative to the throwing direction — not angles.
-    The key idea: "braking" means the lead leg acts as a wall, with force
-    directed opposite to the pitching direction.
+    Features that need throwing_dir projection are skipped if it's None.
+    Stride length (Euclidean distance) is always computed.
 
-    All values are projected onto the throwing direction (mm or mm/s).
+    All directional values are projected onto the throwing direction (mm or mm/s).
     Positive = forward (in throwing direction), Negative = backward.
     """
-    if throwing_dir is None:
-        return {}
-
     result = {}
 
     kne = markers.get(f"{side}KNE")
     ank = markers.get(f"{side}ANK")
     n_frames = next(iter(markers.values())).shape[1]
+    c7 = markers.get("C7")
+    lasi = markers.get("LASI")
+    rasi = markers.get("RASI")
+
+    # === Features that DON'T need throwing_dir ===
+
+    # 6. Stride length at foot strike (plant foot to pivot foot) — Euclidean
+    throw_side = "R" if side == "L" else "L"
+    pivot_ank = markers.get(f"{throw_side}ANK")
+    if ank is not None and pivot_ank is not None:
+        plant_xy = ank[:2, foot_strike_frame]
+        pivot_xy = pivot_ank[:2, foot_strike_frame]
+        stride_vec = plant_xy - pivot_xy
+        result["stride_length"] = float(np.linalg.norm(stride_vec))
+
+    # === Features that NEED throwing_dir ===
+
+    if throwing_dir is None:
+        return result
 
     # 1. Knee-ankle offset in throwing direction at foot strike
-    #    Positive = knee AHEAD of ankle (lunging forward, bad)
-    #    Negative = knee BEHIND ankle (blocking, good)
     if kne is not None and ank is not None:
         knee_xy = kne[:2, foot_strike_frame]
         ankle_xy = ank[:2, foot_strike_frame]
@@ -366,23 +380,18 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
 
         result["knee_forward_vel_at_strike"] = float(v_forward[foot_strike_frame])
 
-        # Multiple time windows after foot strike
         for window_ms in [25, 50, 100, 150]:
             w_frames = int(window_ms / 1000.0 * rate)
             w_end = min(foot_strike_frame + w_frames, n_frames - 1)
             avg_vel = float(np.mean(v_forward[foot_strike_frame:w_end + 1]))
             result[f"knee_forward_vel_{window_ms}ms"] = avg_vel
 
-        # Default "post" = 50ms (backward compat)
         result["knee_forward_vel_post"] = result["knee_forward_vel_50ms"]
-
-        # Deceleration (positive = decelerating = braking)
         result["knee_forward_decel"] = (
             result["knee_forward_vel_at_strike"] - result["knee_forward_vel_post"]
         )
 
     # 3. Head forward displacement around foot strike (±100ms)
-    #    Less head movement = better energy transfer
     for key in ("RFHD", "LFHD", "C7"):
         head = markers.get(key)
         if head is not None:
@@ -391,18 +400,17 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
         head = None
 
     if head is not None:
-        window = int(0.100 * rate)  # 100ms
+        window = int(0.100 * rate)
         pre = max(0, foot_strike_frame - window)
         post = min(n_frames - 1, foot_strike_frame + window)
 
         head_disp = head[:2, post] - head[:2, pre]
         result["head_forward_disp"] = float(np.dot(head_disp, throwing_dir))
 
-        # Head displacement AFTER foot strike only
         head_disp_post = head[:2, post] - head[:2, foot_strike_frame]
         result["head_forward_disp_post"] = float(np.dot(head_disp_post, throwing_dir))
 
-    # 4. Hip-ankle offset (how far forward is the hip over the planted foot)
+    # 4. Hip-ankle offset
     hip = markers.get(f"{side}ASI")
     if hip is not None and ank is not None:
         hip_xy = hip[:2, foot_strike_frame]
@@ -410,27 +418,19 @@ def compute_position_braking_features(markers, foot_strike_frame, rate, throwing
         hip_offset = hip_xy - ankle_xy
         result["hip_ankle_offset"] = float(np.dot(hip_offset, throwing_dir))
 
-    # 5. Trunk forward lean at foot strike (C7 vs pelvis midpoint)
-    c7 = markers.get("C7")
-    lasi = markers.get("LASI")
-    rasi = markers.get("RASI")
+    # 5. Trunk forward lean at foot strike
     if c7 is not None and lasi is not None and rasi is not None:
         pelvis_mid = (lasi[:2, foot_strike_frame] + rasi[:2, foot_strike_frame]) / 2
         c7_xy = c7[:2, foot_strike_frame]
         trunk_lean = c7_xy - pelvis_mid
         result["trunk_forward_lean"] = float(np.dot(trunk_lean, throwing_dir))
 
-    # 6. Stride length at foot strike (plant foot to pivot foot)
-    throw_side = "R" if side == "L" else "L"
-    pivot_ank = markers.get(f"{throw_side}ANK")
+    # 6b. Stride forward component (needs throwing_dir)
     if ank is not None and pivot_ank is not None:
-        plant_xy = ank[:2, foot_strike_frame]
-        pivot_xy = pivot_ank[:2, foot_strike_frame]
-        stride_vec = plant_xy - pivot_xy
-        result["stride_length"] = float(np.linalg.norm(stride_vec))
+        stride_vec = ank[:2, foot_strike_frame] - pivot_ank[:2, foot_strike_frame]
         result["stride_forward"] = float(np.dot(stride_vec, throwing_dir))
 
-    # 7. Pelvis forward velocity and deceleration at foot strike
+    # 7. Pelvis forward velocity and deceleration
     if lasi is not None and rasi is not None:
         pelvis_xy = (lasi[:2, :] + rasi[:2, :]) / 2
         pvx = np.gradient(pelvis_xy[0, :]) * rate
