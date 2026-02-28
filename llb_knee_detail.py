@@ -132,11 +132,11 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     b_s = bounds(points_s)
     b_w = bounds(points_w)
 
-    # Figure: 3D skeletons on top, graph on bottom
-    fig = plt.figure(figsize=(18, 11))
+    # Figure: 3D skeletons on top, graph on bottom (enough room for labels)
+    fig = plt.figure(figsize=(18, 12))
     ax_s = fig.add_subplot(2, 2, 1, projection="3d")
     ax_w = fig.add_subplot(2, 2, 2, projection="3d")
-    ax_g = fig.add_axes([0.08, 0.03, 0.84, 0.22])
+    ax_g = fig.add_axes([0.10, 0.06, 0.82, 0.22])
 
     def draw_skeleton(ax, labels, points, fi, bnd, color, title, speed,
                       knee_angle, knee_vel, is_fs, is_post_fs, is_strong):
@@ -202,7 +202,8 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
         # Plot interpolated lines on common time axis (no NaN gaps)
         ax.plot(common_time, gk_s_interp, color="#2980b9", linewidth=2.5, label="Strong Block")
         ax.plot(common_time, gk_w_interp, color="#e67e22", linewidth=2.5, label="Weak Block")
-        ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--", alpha=0.7, label="Foot Strike")
+        ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--",
+                   alpha=0.7, label="Foot Strike (front foot lands)")
 
         # Dots on the lines at the same X position
         t_now = common_time[frame_num]
@@ -211,19 +212,15 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
         ax.scatter(t_now, gk_w_interp[frame_num],
                    s=150, c="#e67e22", zorder=5, edgecolors="black", linewidths=2)
 
-        ax.set_xlabel("Time from Foot Strike (s)", fontsize=11)
-        ax.set_ylabel("Knee Angle (\u00b0)", fontsize=12)
-        ax.set_title("Knee Angle Over Time", fontsize=11, fontweight="bold", color="#2c3e50")
-        ax.legend(loc="lower right", fontsize=10)
+        ax.set_xlabel("Time (seconds)  \u2190 before foot strike | after foot strike \u2192",
+                      fontsize=12, fontweight="bold")
+        ax.set_ylabel("Knee Angle (\u00b0)\n\u2191 straight (180\u00b0)\n\u2193 bent (90\u00b0)",
+                      fontsize=11, fontweight="bold")
+        ax.set_title("Lead Knee Angle Over Time \u2014 strong block = knee extends after foot strike",
+                      fontsize=12, fontweight="bold", color="#2c3e50")
+        ax.legend(loc="lower right", fontsize=10, framealpha=0.9)
         ax.grid(True, alpha=0.3)
         ax.set_xlim(-pre_sec - 0.02, post_sec + 0.02)
-
-        # Add straight/bent labels on Y axis
-        ylim = ax.get_ylim()
-        ax.text(-pre_sec - 0.06, ylim[1], "\u2191 straight", fontsize=10,
-                fontweight="bold", color="#27ae60", ha="right", va="top")
-        ax.text(-pre_sec - 0.06, ylim[0], "\u2193 bent", fontsize=10,
-                fontweight="bold", color="#c0392b", ha="right", va="bottom")
 
     # Persistent text objects for overlays
     overlay_texts = []

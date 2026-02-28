@@ -355,20 +355,33 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
         print("  Not enough LLB data for quartile profile")
         return
 
-    # Create speed quartiles
+    # Create speed quartiles with descriptive labels
     valid = df.dropna(subset=[speed_key])
     valid = valid.copy()
-    valid["speed_quartile"] = pd.qcut(valid[speed_key], q=4, labels=["Q1\n(slowest)", "Q2", "Q3", "Q4\n(fastest)"])
+    speed_unit = "mph"
+    quartile_bounds = valid[speed_key].quantile([0, 0.25, 0.5, 0.75, 1.0])
+    q_labels = [
+        f"Q1 (slowest)\n{quartile_bounds.iloc[0]:.0f}-{quartile_bounds.iloc[1]:.0f} {speed_unit}",
+        f"Q2\n{quartile_bounds.iloc[1]:.0f}-{quartile_bounds.iloc[2]:.0f} {speed_unit}",
+        f"Q3\n{quartile_bounds.iloc[2]:.0f}-{quartile_bounds.iloc[3]:.0f} {speed_unit}",
+        f"Q4 (fastest)\n{quartile_bounds.iloc[3]:.0f}-{quartile_bounds.iloc[4]:.0f} {speed_unit}",
+    ]
+    valid["speed_quartile"] = pd.qcut(valid[speed_key], q=4, labels=q_labels)
 
-    # Readable labels for each metric
-    metric_labels = {
-        "llb_ankle_velocity_delta": "Ankle Braking\n(velocity change at foot strike, mm/s)",
-        "llb_knee_ext_peak_velocity": "Knee Extension Speed\n(how fast the knee straightens, deg/s)",
-        "llb_ankle_velocity_at_strike": "Ankle Speed at Foot Strike\n(mm/s)",
-        "llb_ankle_velocity_post_strike": "Ankle Speed After Foot Strike\n(mm/s)",
-        "llb_ankle_braking_decel": "Ankle Deceleration\n(braking force, mm/s²)",
-        "llb_knee_angle_at_strike": "Knee Angle at Foot Strike\n(degrees)",
-        "llb_knee_extension_range": "Knee Extension Range\n(degrees of straightening)",
+    # Readable labels and units for each metric
+    metric_info = {
+        "llb_ankle_velocity_delta": {
+            "title": "Ankle Braking at Foot Strike",
+            "ylabel": "Velocity Change (mm/s)",
+            "desc": "How sharply the front ankle decelerates\nat foot strike. Larger = harder plant.",
+            "fmt": ".1f",
+        },
+        "llb_knee_ext_peak_velocity": {
+            "title": "Lead Knee Extension Speed",
+            "ylabel": "Peak Angular Velocity (deg/s)",
+            "desc": "How fast the lead knee straightens\nafter foot strike. Higher = stronger block.",
+            "fmt": ".0f",
+        },
     }
 
     # Focus on the two most important metrics
@@ -378,35 +391,39 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
         key_metrics = available[:2]
 
     n_metrics = len(key_metrics)
-    fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 6))
+    fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 7))
     if n_metrics == 1:
         axes = [axes]
 
     colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c"]
 
     for ax, col in zip(axes, key_metrics):
+        info = metric_info.get(col, {})
         grouped = valid.groupby("speed_quartile", observed=True)[col].mean()
         bars = ax.bar(range(len(grouped)), grouped.values, color=colors[:len(grouped)],
                       edgecolor="black", linewidth=0.5, width=0.7)
         ax.set_xticks(range(len(grouped)))
-        ax.set_xticklabels(grouped.index, fontsize=12)
-        label = metric_labels.get(col, col.replace("llb_", "").replace("_", " ").title())
-        ax.set_ylabel(label.split("\n")[0], fontsize=12)
-        ax.set_title(label, fontsize=13, fontweight="bold")
+        ax.set_xticklabels(grouped.index, fontsize=11)
+        ax.set_xlabel("Pitch Speed Quartile (grouped by speed)", fontsize=12, fontweight="bold")
+        ax.set_ylabel(info.get("ylabel", col), fontsize=12, fontweight="bold")
+        ax.set_title(info.get("title", col) + "\n" + info.get("desc", ""),
+                     fontsize=13, fontweight="bold", linespacing=1.4)
         ax.grid(True, alpha=0.3, axis="y")
 
-        # Add value labels on bars
+        # Value labels on bars — use appropriate decimal format
+        fmt = info.get("fmt", ".1f")
         for bar, val in zip(bars, grouped.values):
             if not np.isnan(val):
                 ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                        f"{val:.0f}", ha="center", va="bottom", fontsize=12,
+                        f"{val:{fmt}}", ha="center", va="bottom", fontsize=13,
                         fontweight="bold")
 
     speed_label = "Pitch Speed" if mode == "pitching" else "Exit Velocity"
     fig.suptitle(f"Do Faster Pitchers Block Harder?\n"
-                 f"Lead Leg Block metrics by {speed_label} quartile (Driveline OBP)",
+                 f"Lead Leg Block metrics by {speed_label} quartile "
+                 f"({len(valid)} pitchers, Driveline OBP)",
                  fontsize=15, fontweight="bold", y=1.02)
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     path = output_dir / f"llb_profile_{mode}.png"
     fig.savefig(str(path), dpi=150, bbox_inches="tight")
