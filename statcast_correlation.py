@@ -117,7 +117,7 @@ def extract_peak_features(markers, rate, mode="pitching"):
         features["min_knee_flexion"] = np.nanmin(knee)
 
     # Lead leg block features
-    llb = compute_lead_leg_block_features(markers, rate, side=lead_side)
+    llb = compute_lead_leg_block_features(markers, rate, side=lead_side, verbose=True)
     features.update(llb)
 
     return features

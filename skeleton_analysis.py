@@ -117,7 +117,7 @@ def compute_angular_velocity(angles, rate):
     return vel
 
 
-def detect_foot_strike(markers, side="L", rate=360.0):
+def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
     """Detect foot strike frame from heel marker vertical trajectory.
 
     Finds the frame where the lead foot contacts the ground by detecting
@@ -129,10 +129,19 @@ def detect_foot_strike(markers, side="L", rate=360.0):
     heel_key = f"{side}HEE"
     heel = markers.get(heel_key)
     if heel is None:
+        if verbose:
+            print(f"    [foot_strike] FAIL: marker '{heel_key}' not found")
         return None
 
     heel_z = heel[2, :]  # vertical position
     n_frames = len(heel_z)
+
+    # Check for all-zero or all-NaN marker data
+    valid = ~np.isnan(heel_z) & (heel_z != 0)
+    if valid.sum() < n_frames * 0.5:
+        if verbose:
+            print(f"    [foot_strike] FAIL: '{heel_key}' has {valid.sum()}/{n_frames} valid frames ({valid.sum()/n_frames*100:.0f}%)")
+        return None
 
     # Vertical velocity (mm/s)
     heel_vz = np.gradient(heel_z) * rate
@@ -146,18 +155,41 @@ def detect_foot_strike(markers, side="L", rate=360.0):
     start = n_frames // 10
     lift_peak = start + np.argmax(heel_z[start:])
 
+    if verbose:
+        print(f"    [foot_strike] n_frames={n_frames}, lift_peak={lift_peak} "
+              f"(heel_z={heel_z[lift_peak]:.0f}mm)")
+
     # After lift peak, find where vz goes from negative to near-zero
     # (heel descending then stopping = ground contact)
     min_heel_z = np.min(heel_z[lift_peak:])
     heel_z_range = np.max(heel_z[lift_peak:]) - min_heel_z
     threshold_z = min_heel_z + heel_z_range * 0.10
 
+    if verbose:
+        print(f"    [foot_strike] min_heel_z={min_heel_z:.0f}mm, "
+              f"range={heel_z_range:.0f}mm, threshold={threshold_z:.0f}mm")
+
+    # Track why candidates are rejected
+    vel_candidates = 0
+    z_rejects = 0
     for i in range(lift_peak + 1, n_frames - 1):
         # Velocity was negative (descending) and is now near zero
         if heel_vz_smooth[i - 1] < 0 and abs(heel_vz_smooth[i]) < abs(heel_vz_smooth[lift_peak]) * 0.1:
+            vel_candidates += 1
             # Confirm heel is near its minimum (within 10% of range)
             if heel_z[i] <= threshold_z:
+                if verbose:
+                    print(f"    [foot_strike] FOUND: frame {i}/{n_frames} "
+                          f"({i/n_frames*100:.0f}%), heel_z={heel_z[i]:.0f}mm")
                 return i
+            else:
+                z_rejects += 1
+
+    if verbose:
+        print(f"    [foot_strike] FAIL: no frame matched. "
+              f"vel_candidates={vel_candidates}, z_rejects={z_rejects}")
+        if vel_candidates > 0 and z_rejects == vel_candidates:
+            print(f"    [foot_strike] All {z_rejects} velocity-matched frames rejected by Z threshold")
 
     return None
 
@@ -298,7 +330,7 @@ def compute_lead_knee_extension_velocity(markers, foot_strike_frame, rate, side=
     }
 
 
-def compute_lead_leg_block_features(markers, rate, side="L"):
+def compute_lead_leg_block_features(markers, rate, side="L", verbose=False):
     """Compute all lead leg block features.
 
     Orchestrates foot strike detection, ankle braking, and knee extension
@@ -307,7 +339,7 @@ def compute_lead_leg_block_features(markers, rate, side="L"):
     Returns:
         dict of LLB features (empty dict if foot strike not detected).
     """
-    fs = detect_foot_strike(markers, side, rate)
+    fs = detect_foot_strike(markers, side, rate, verbose=verbose)
     if fs is None:
         return {}
 
