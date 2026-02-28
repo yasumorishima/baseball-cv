@@ -118,14 +118,46 @@ def compute_angular_velocity(angles, rate):
 
 
 def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
-    """Detect foot strike frame from heel marker vertical trajectory.
+    """Detect foot strike frame using heel Z coordinate position.
 
-    Uses vertical acceleration spike (ground impact) as primary signal,
-    with heel height and arm timing as sanity checks.
+    Simple coordinate-based algorithm:
+    1. Ground level = heel Z at recording start (pitcher is standing)
+    2. Find leg lift peak (max heel Z)
+    3. After lift peak, first frame where heel Z returns to ground level
+
+    If side="auto", auto-detects the stride leg by comparing LHEE vs RHEE
+    lift peak timing — the stride leg peaks earlier (30-50% of recording),
+    the plant foot peaks late (90-100%) due to follow-through.
+
+    Args:
+        markers: dict of marker name -> (3, n_frames) array
+        side: "L", "R", or "auto" (auto-detect stride leg)
+        rate: sampling rate in Hz (unused, kept for API compat)
+        verbose: print debug info
 
     Returns:
         Frame index of foot strike, or None if detection fails.
     """
+    if side == "auto":
+        lhee = markers.get("LHEE")
+        rhee = markers.get("RHEE")
+        if lhee is not None and rhee is not None:
+            nf = lhee.shape[1]
+            l_peak = 10 + np.argmax(lhee[2, 10:])
+            r_peak = 10 + np.argmax(rhee[2, 10:])
+            # Stride leg lifts and peaks earlier; plant foot peaks late
+            side = "L" if l_peak < r_peak else "R"
+            if verbose:
+                print(f"    [foot_strike] auto-detect: LHEE peak={l_peak} "
+                      f"({l_peak/nf*100:.0f}%), RHEE peak={r_peak} "
+                      f"({r_peak/nf*100:.0f}%) -> side={side}")
+        elif lhee is not None:
+            side = "L"
+        elif rhee is not None:
+            side = "R"
+        else:
+            return None
+
     heel_key = f"{side}HEE"
     heel = markers.get(heel_key)
     if heel is None:
@@ -136,91 +168,50 @@ def detect_foot_strike(markers, side="L", rate=360.0, verbose=False):
     heel_z = heel[2, :]  # vertical position
     n_frames = len(heel_z)
 
-    # Check for all-zero or all-NaN marker data
+    # Check for sufficient valid data
     valid_mask = ~np.isnan(heel_z) & (heel_z != 0)
     if valid_mask.sum() < n_frames * 0.5:
         if verbose:
-            print(f"    [foot_strike] FAIL: '{heel_key}' has {valid_mask.sum()}/{n_frames} valid frames")
+            print(f"    [foot_strike] FAIL: '{heel_key}' has "
+                  f"{valid_mask.sum()}/{n_frames} valid frames")
         return None
 
-    # Vertical velocity and acceleration
-    heel_vz = np.gradient(heel_z) * rate
-    heel_az = np.gradient(heel_vz) * rate  # acceleration (positive = upward impulse = impact)
+    # Ground level = average heel Z at recording start (pitcher standing)
+    ground_z = np.mean(heel_z[:10])
 
-    # Smooth
-    kernel = np.ones(5) / 5
-    heel_vz_smooth = np.convolve(heel_vz, kernel, mode="same")
-    heel_az_smooth = np.convolve(heel_az, kernel, mode="same")
-
-    # Find leg lift peak (highest heel Z after start)
-    start = n_frames // 10
-    lift_peak = start + np.argmax(heel_z[start:])
-
-    if verbose:
-        print(f"    [foot_strike] n_frames={n_frames}, lift_peak={lift_peak} "
-              f"(heel_z={heel_z[lift_peak]:.4f}m)")
-
-    # Ground level = minimum heel Z in the recording
-    min_heel_z = np.min(heel_z[valid_mask])
-    ground_threshold = min_heel_z + 0.05  # within 5cm of ground
-
-    # Find arm peak velocity frame as upper bound
-    # Foot strike must happen BEFORE peak arm speed
-    arm_peak_frame = n_frames  # default: no constraint
-    for arm_side in ["R", "L"]:
-        fin = markers.get(f"{arm_side}FIN")
-        if fin is not None:
-            fin_v = np.sqrt(np.sum(np.gradient(fin, axis=1) ** 2, axis=0)) * rate
-            fin_v_smooth = np.convolve(fin_v, kernel, mode="same")
-            peak_frame = np.argmax(fin_v_smooth)
-            if peak_frame > lift_peak:
-                arm_peak_frame = min(arm_peak_frame, peak_frame)
-
-    if verbose:
-        print(f"    [foot_strike] ground_threshold={ground_threshold:.4f}m, "
-              f"arm_peak_frame={arm_peak_frame}")
-
-    # Search window: after lift peak, before arm peak + small margin
-    search_end = min(n_frames - 1, arm_peak_frame + int(0.05 * rate))
-
-    # Method 1: Find largest upward acceleration spike (ground impact)
-    # after lift peak and while heel is descending
-    search_region = slice(lift_peak + 1, search_end)
-    az_region = heel_az_smooth[search_region].copy()
-
-    # Only consider frames where heel is descending or just stopped
-    # and heel is near ground level
-    best_frame = None
-    best_score = -np.inf
-
-    for i in range(lift_peak + 1, search_end):
-        # Must be near ground
-        if heel_z[i] > ground_threshold:
-            continue
-        # Acceleration spike (positive = upward impulse from ground)
-        score = heel_az_smooth[i]
-        if score > best_score:
-            best_score = score
-            best_frame = i
-
-    if best_frame is not None:
+    # Edge case: recording starts with foot already elevated (e.g. 000610)
+    if ground_z > 0.30:
+        ground_z = np.min(heel_z[valid_mask])
         if verbose:
-            print(f"    [foot_strike] FOUND (accel spike): frame {best_frame}/{n_frames} "
-                  f"({best_frame/n_frames*100:.0f}%), "
-                  f"heel_z={heel_z[best_frame]:.4f}m, az={best_score:.2f}")
-        return best_frame
+            print(f"    [foot_strike] start_z high "
+                  f"({np.mean(heel_z[:10]):.3f}m), using min: {ground_z:.3f}m")
 
-    # Method 2: Fallback — velocity transition (original method) with strict ground check
-    for i in range(lift_peak + 1, search_end):
-        if heel_vz_smooth[i - 1] < 0 and abs(heel_vz_smooth[i]) < abs(heel_vz_smooth[lift_peak]) * 0.1:
-            if heel_z[i] <= ground_threshold:
-                if verbose:
-                    print(f"    [foot_strike] FOUND (vel fallback): frame {i}/{n_frames} "
-                          f"({i/n_frames*100:.0f}%), heel_z={heel_z[i]:.4f}m")
-                return i
+    # Find leg lift peak (highest point after first 10 frames)
+    lift_peak = 10 + np.argmax(heel_z[10:])
+    lift_height = heel_z[lift_peak] - ground_z
+
+    # Sanity: lift must be at least 15cm
+    if lift_height < 0.15:
+        if verbose:
+            print(f"    [foot_strike] FAIL: lift height only "
+                  f"{lift_height:.3f}m (need >= 0.15m)")
+        return None
+
+    # Threshold: ground level + 3cm tolerance
+    threshold = ground_z + 0.03
+
+    # After lift peak, find first frame where heel Z drops to ground
+    for i in range(lift_peak + 1, n_frames):
+        if heel_z[i] <= threshold:
+            if verbose:
+                print(f"    [foot_strike] FOUND: frame {i}/{n_frames} "
+                      f"({i / n_frames * 100:.1f}%), "
+                      f"heel_z={heel_z[i]:.4f}m, ground={ground_z:.4f}m")
+            return i
 
     if verbose:
-        print(f"    [foot_strike] FAIL: no frame matched")
+        print(f"    [foot_strike] FAIL: heel never returned to ground "
+              f"(threshold={threshold:.4f}m)")
     return None
 
 

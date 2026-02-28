@@ -50,13 +50,13 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 60 Driveline OBP pitchers analyzed. Pitch speed is **not** used as a target — we focus on how the body transfers energy.
 
-**Finding**: Ankle braking → Head stabilizes → Trunk rotation peaks faster
+**Finding**: Knee braking → Head stabilizes → Trunk rotation peaks faster
 
 ![Head Stability Scatter](data/output/head_stability_scatter.png)
 
-There is an optimal braking level — deviation from it delays trunk rotation (r = +0.80). The human head weighs ~5 kg; when it stabilizes, the trunk reaches peak rotational velocity dramatically faster (r = -0.88).
+Stronger knee deceleration at foot strike stabilizes the head (r = +0.30). The human head weighs ~5 kg; when it stabilizes, the trunk reaches peak rotational velocity faster (r = -0.54).
 
-**Head Stable vs Unstable** — foot strike vs 100ms after (head drift: 6cm vs 47cm):
+**Head Stable vs Unstable** — foot strike vs 100ms after (head drift: 15cm vs 50cm):
 
 ![Head Stability Static](data/output/head_stability_static.png)
 

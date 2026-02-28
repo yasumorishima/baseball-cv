@@ -42,7 +42,7 @@ def find_best_worst():
     import pandas as pd
 
     df = pd.read_csv(OUTPUT_DIR / "features_pitching.csv")
-    valid = df[df["llb_head_forward_disp"] > 0.10].copy()
+    valid = df[df["llb_head_forward_disp"] > 0.05].copy()
     valid["head_stability_score"] = (
         1 - valid["llb_head_forward_disp_post"] / valid["llb_head_forward_disp"]
     ).clip(0, 1)
@@ -52,9 +52,10 @@ def find_best_worst():
     )
     available = valid[valid["exists"]].copy()
 
-    # Similar foot strike timing, different head stability
-    stable = available[available["filename"].str.contains("000538")].iloc[0]
-    unstable = available[available["filename"].str.contains("000359")].iloc[0]
+    # Identical foot strike timing (fs=369), very different post-FS drift
+    # stable: 0.10m post-FS drift, unstable: 0.50m post-FS drift
+    stable = available[available["filename"].str.contains("001002")].iloc[0]
+    unstable = available[available["filename"].str.contains("000625")].iloc[0]
     return stable, unstable
 
 
