@@ -45,7 +45,7 @@ Q1_META = {
 Q5_META = {
     "pitch_speed_mph": 91.8, "arm_speed": 24.96,
     "stride_m": 0.89, "body_efficiency": +7.17,
-    "llb_foot_strike_frame": 387,  # vel≈0 (-0.0007 m/s), refined from 384
+    "llb_foot_strike_frame": 379,  # algorithm detection: vel=-0.099 m/s, first threshold crossing
 }
 
 # Lead leg (left = lead leg for right-handed pitcher)
