@@ -9,8 +9,8 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 1 | `skeleton_c3d.py` | Load Driveline OBP C3D files with [ezc3d](https://github.com/pyomeca/ezc3d) → 3D skeleton visualization & animation |
 | 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
-| 4–5 | `statcast_correlation.py` `head_stability_analysis.py` | Movement quality chain: braking → head stability → trunk transfer (60 pitchers) |
-| 6 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
+| 4 | `statcast_correlation.py` | Feature extraction from C3D: 100 biomechanical features across 60 pitchers |
+| 5 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
 
 ## Results
 
@@ -47,29 +47,9 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 ![Angular Velocity](data/output/angular_velocity_pitching.png)
 
-### Step 4–5: Head Stability — The Core of Pitching Mechanics
+### Step 4–5: Efficient Throwing — Body Mechanics Analysis
 
-60 Driveline OBP pitchers analyzed. Pitch speed is **not** used as a target — we focus on how the body transfers energy.
-
-**Finding**: Knee braking → Head stabilizes → Trunk rotation peaks faster
-
-![Head Stability Scatter](data/output/head_stability_scatter.png)
-
-Stronger knee deceleration at foot strike stabilizes the head (r = +0.30). The human head weighs ~5 kg; when it stabilizes, the trunk reaches peak rotational velocity faster (r = -0.54).
-
-**Head Stable vs Unstable** — foot strike vs 100ms after (head drift: 15cm vs 50cm):
-
-![Head Stability Static](data/output/head_stability_static.png)
-
-Skeleton animation comparison (head markers & trail in red), aligned on foot strike:
-
-![Head Stability Comparison](data/output/head_stability_comparison.gif)
-
-> The same analysis works for hitting (front foot block → bat speed).
-
-### Step 6: Efficient Throwing — Body Mechanics Analysis
-
-**Finding**: Pitchers with identical arm speed (24–26 m/s) vary by 13 mph in pitch speed. Four independent body mechanics factors explain 17.8% additional variance beyond arm speed.
+60 Driveline OBP pitchers analyzed. **Finding**: Pitchers with identical arm speed (24–26 m/s) vary by 13 mph in pitch speed. Four independent body mechanics factors explain 17.8% additional variance beyond arm speed alone.
 
 **5-Component Model (R² = 0.669 vs 0.491 arm-speed-only):**
 
@@ -81,11 +61,11 @@ Skeleton animation comparison (head markers & trail in red), aligned on foot str
 | + Arm chain pattern | +0.028 | Does body drive the elbow vs arm self-generating? |
 | + Knee smoothness | **+0.077** | Smooth lead leg = body drives arm (pelvis/arm ratio) |
 
-**Scatter: Same arm speed → 10.3 mph gap (Q1=79 mph vs Q5=89 mph):**
+**Same arm speed → 10.3 mph gap (Q1=79 mph vs Q5=89 mph):**
 
 ![Efficient Throwing Story](data/output/efficient_throwing_story.png)
 
-**Q1 vs Q5 body mechanics breakdown (same arm speed 24.6 vs 24.7 m/s):**
+**Q1 vs Q5 body mechanics breakdown (arm speed 24.6 vs 24.7 m/s — virtually identical):**
 
 ![Body Efficiency Breakdown](data/output/body_efficiency_breakdown.png)
 
@@ -93,9 +73,9 @@ Skeleton animation comparison (head markers & trail in red), aligned on foot str
 
 ![Efficient Thrower Comparison](data/output/efficient_thrower_comparison.gif)
 
-> Knee smoothness is a **suppressor variable**: raw r=+0.12 (jerky athletes have fast arms too), but after controlling for arm speed: r=−0.45\*\*\* — smooth knee → pelvis/arm ratio 17% higher → body drives the arm.
+> **Knee smoothness** is a suppressor variable: raw r=+0.12 (explosive athletes have fast arms AND jerky knees), but after controlling for arm speed: r=−0.45\*\*\* — smooth knee → pelvis/arm ratio 17% higher → body drives the arm rather than the arm self-generating.
 
-> Root cause of short stride: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited. Mechanism: ankle braking → stride r=+0.55\*\*\*.
+> **Root cause of short stride**: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited (ankle braking → stride r=+0.55\*\*\*).
 
 ## Setup
 
@@ -131,13 +111,10 @@ python skeleton_video.py --input data/videos/batting.mp4
 python skeleton_analysis.py --mode pitching
 python skeleton_analysis.py --mode hitting
 
-# Step 4: Feature extraction (downloads additional C3D files)
+# Step 4: Feature extraction (downloads C3D files, builds features_pitching.csv)
 python statcast_correlation.py --mode pitching --download 40
 
-# Step 5: Head stability chain analysis
-python head_stability_analysis.py
-
-# Step 6: Body efficiency analysis (requires features_pitching.csv from Step 4)
+# Step 5: Body efficiency analysis
 python body_efficiency_analysis.py         # Scatter plots + R2 breakdown
 python efficient_thrower_gif.py            # Skeleton animation Q1 vs Q5
 ```
