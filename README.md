@@ -9,8 +9,8 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 1 | `skeleton_c3d.py` | Load Driveline OBP C3D files with [ezc3d](https://github.com/pyomeca/ezc3d) → 3D skeleton visualization & animation |
 | 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
-| 4 | `statcast_correlation.py` | Skeleton features × pitch speed / exit velocity correlation |
-| 5 | `statcast_correlation.py` | Lead Leg Block analysis — foot strike detection, ankle braking & knee extension vs speed |
+| 4 | `statcast_correlation.py` | Multi-athlete biomechanical feature extraction (60 pitchers, auto-detect throwing arm) |
+| 5 | `head_stability_analysis.py` | Movement quality chain: braking → head stability → trunk transfer |
 
 ## Results
 
@@ -47,47 +47,41 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 ![Angular Velocity](data/output/angular_velocity_pitching.png)
 
-### Step 4: Body Mechanics → Arm Speed
+### Step 4: Biomechanical Feature Extraction (60 Athletes)
 
-What body mechanics drive faster arm action? 60 Driveline OBP athletes (71.3–93.1 mph) analyzed.
+60 Driveline OBP pitchers (71.3–93.1 mph), throwing arm auto-detected by comparing left/right elbow angular velocity. 90+ features extracted per pitcher across 6 categories:
 
-![Scatter](data/output/scatter_pitching.png)
+- **Braking**: ankle/knee/pelvis deceleration at foot strike, projected onto throwing direction
+- **Head stability**: head forward displacement before/after foot strike
+- **Trunk transfer**: trunk rotation velocity, time from foot strike to peak trunk rotation
+- **Smoothness**: RMS jerk (elbow, trunk, knee), kinematic sequence timing
+- **Whip**: elbow → wrist → finger linear velocity amplification ratio
+- **Release**: finger deceleration after peak speed, wrist snap angular velocity
 
-The strongest correlations with elbow angular velocity (arm speed):
+![Correlation Matrix](data/output/movement_quality_matrix.png)
 
-| Feature | r | p | n |
+### Step 5: Head Stability — The Core of Pitching Mechanics
+
+Pitch speed is a result, not a cause. We analyzed how body segments transfer energy through the kinetic chain, **without using pitch speed as a target variable**.
+
+**The chain**: Ankle braking → Head stabilizes → Trunk rotation peaks faster
+
+![Head Stability Analysis](data/output/head_stability_analysis.png)
+
+| Link | r | p | n |
 |---|---|---|---|
-| Peak Knee Flexion | +0.76 | <0.001 | 60 |
-| Min Knee Flexion | -0.65 | <0.001 | 60 |
-| Peak Shoulder Abduction | +0.51 | <0.001 | 60 |
-| Stride Length / Height | +0.39 | 0.023 | 34 |
-| Trunk Rotation Range | +0.36 | 0.005 | 60 |
+| Ankle braking → Head stability score | **+0.412** | **0.004** | 49 |
+| Head stability → Time to peak trunk velocity | **-0.878** | **<0.001** | 49 |
 
-![Correlation](data/output/correlation_pitching.png)
+**Why the head matters**: The human head weighs ~5 kg. When the lead foot brakes and the head decelerates, it acts as a stable axis of rotation. The trunk can then rotate efficiently around this fixed point, reaching peak rotational velocity faster. When the head drifts forward, the rotation axis shifts and energy dissipates — force "leaks" instead of transferring up the chain.
 
-### Step 5: Lead Leg Block — Hypothesis vs Reality
-
-**Hypothesis**: Pitchers who "block" their lead leg more effectively at foot strike produce higher pitch speed.
-
-**What we tested**: 40+ position-based and angle-based braking metrics — knee-ankle offset, knee forward velocity, pelvis deceleration, ankle braking, head stability, stride length, trunk rotation timing — all projected onto the throwing direction and normalized by body height.
-
-**What we found**: Lead leg braking metrics do NOT strongly correlate with pitch speed (r < 0.34, mostly non-significant). The real pathway is **body mechanics → arm speed**, not directly → pitch speed:
-
-![LLB Profile](data/output/llb_profile_pitching.png)
-
-Stride length (relative to height) and trunk rotation timing correlate with arm speed, while position-based braking metrics (knee forward velocity, pelvis deceleration) show weak effects that did not survive increasing the sample size from n=25 to n=35.
-
-**Long vs Short Stride** — skeleton animation comparison (lead leg in red), selected by stride length / height:
+**Long vs Short Stride** — skeleton animation comparison (lead leg in red):
 
 ![LLB Comparison](data/output/llb_comparison.gif)
 
-**Stride Length → Arm Speed** — full-body skeleton with elbow angular velocity graph:
+**Movement Quality Chain** — correlations between body mechanics categories:
 
-![Knee Detail](data/output/llb_knee_detail.gif)
-
-The pitcher with a longer stride (relative to height) generates faster elbow angular velocity. This is consistent with the population-level correlation (r=+0.39, p=0.023, n=34).
-
-**Key takeaway**: Pitch speed is the final output of a complex chain. Body mechanics (knee flexion, stride length, trunk rotation) directly drive arm speed, but the link from arm speed to pitch speed depends on additional factors (release point, finger mechanics, ball grip) that motion capture alone cannot measure.
+![Movement Quality Chain](data/output/movement_quality_chain.png)
 
 > The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
 
@@ -125,8 +119,11 @@ python skeleton_video.py --input data/videos/batting.mp4
 python skeleton_analysis.py --mode pitching
 python skeleton_analysis.py --mode hitting
 
-# Step 4-5: Correlation + Lead Leg Block analysis (downloads additional C3D files)
+# Step 4: Feature extraction (downloads additional C3D files)
 python statcast_correlation.py --mode pitching --download 40
+
+# Step 5: Head stability chain analysis
+python head_stability_analysis.py
 ```
 
 ## Data Sources & Credits
