@@ -112,16 +112,14 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
     idx_w = np.linspace(start_w, end_w - 1, n_anim).astype(int)
     fs_gif = int(pre_sec / total_sec * n_anim)
 
-    # Graph data
-    gt_s = (np.arange(start_s, end_s) - fs_s) / rate_s
-    gt_w = (np.arange(start_w, end_w) - fs_w) / rate_w
-    gk_s = knee_s[start_s:end_s]
-    gk_w = knee_w[start_w:end_w]
-    gi_s = np.linspace(0, len(gk_s) - 1, n_anim).astype(int)
-    gi_w = np.linspace(0, len(gk_w) - 1, n_anim).astype(int)
-
-    # Common time axis for synchronized dot movement
+    # Graph data — use common time axis so both dots move in sync
     common_time = np.linspace(-pre_sec, post_sec, n_anim)
+
+    # Interpolate knee angles onto common time axis (no NaN gaps, dots on lines)
+    gt_s_raw = (np.arange(start_s, end_s) - fs_s) / rate_s
+    gt_w_raw = (np.arange(start_w, end_w) - fs_w) / rate_w
+    gk_s_interp = np.interp(common_time, gt_s_raw, knee_s[start_s:end_s])
+    gk_w_interp = np.interp(common_time, gt_w_raw, knee_w[start_w:end_w])
 
     # Global bounds for 3D views
     def bounds(pts):
@@ -201,15 +199,16 @@ def create_knee_detail_gif(strong_file, weak_file, strong_meta, weak_meta, outpu
 
     def draw_graph(ax, frame_num):
         ax.clear()
-        ax.plot(gt_s, gk_s, color="#2980b9", linewidth=2.5, label="Strong Block")
-        ax.plot(gt_w, gk_w, color="#e67e22", linewidth=2.5, label="Weak Block")
+        # Plot interpolated lines on common time axis (no NaN gaps)
+        ax.plot(common_time, gk_s_interp, color="#2980b9", linewidth=2.5, label="Strong Block")
+        ax.plot(common_time, gk_w_interp, color="#e67e22", linewidth=2.5, label="Weak Block")
         ax.axvline(0, color="#e74c3c", linewidth=2, linestyle="--", alpha=0.7, label="Foot Strike")
 
-        # Both dots at the same X position (common time axis)
+        # Dots on the lines at the same X position
         t_now = common_time[frame_num]
-        ax.scatter(t_now, gk_s[gi_s[frame_num]],
+        ax.scatter(t_now, gk_s_interp[frame_num],
                    s=150, c="#2980b9", zorder=5, edgecolors="black", linewidths=2)
-        ax.scatter(t_now, gk_w[gi_w[frame_num]],
+        ax.scatter(t_now, gk_w_interp[frame_num],
                    s=150, c="#e67e22", zorder=5, edgecolors="black", linewidths=2)
 
         ax.set_xlabel("Time from Foot Strike (s)", fontsize=11)
