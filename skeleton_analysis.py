@@ -492,6 +492,68 @@ def compute_timing_features(markers, foot_strike_frame, rate, side="L"):
     return result
 
 
+def compute_release_features(markers, rate, side="R"):
+    """Compute release point features: finger deceleration, wrist snap, direction.
+
+    Proxy for 'finger on the ball' quality — how sharply the finger
+    decelerates after release, how fast the wrist snaps, and how well
+    the finger velocity aligns with the throwing direction.
+    """
+    result = {}
+
+    fin = markers.get(f"{side}FIN")
+    wra = markers.get(f"{side}WRA")
+    wrb = markers.get(f"{side}WRB")
+    if fin is None or wra is None or wrb is None:
+        return result
+
+    n_frames = fin.shape[1]
+
+    # Linear speed of finger
+    fin_vel = np.gradient(fin, axis=1) * rate
+    fin_speed = np.sqrt(fin_vel[0] ** 2 + fin_vel[1] ** 2 + fin_vel[2] ** 2)
+
+    # Release = peak finger speed
+    release = int(np.nanargmax(fin_speed))
+    result["release_finger_speed"] = float(fin_speed[release])
+
+    # 1. Finger deceleration after release (sharpness of speed drop)
+    for window_ms in [10, 25, 50]:
+        w = int(window_ms / 1000 * rate)
+        post = min(release + w, n_frames - 1)
+        if post > release:
+            drop = float(fin_speed[release] - fin_speed[post])
+            decel = drop / (window_ms / 1000)
+            result[f"release_decel_{window_ms}ms"] = decel
+
+    # 2. Wrist snap: angular velocity of wrist-to-finger vector (3D)
+    wrist_mid = (wra + wrb) / 2
+    wf = fin - wrist_mid
+    wf_len = np.linalg.norm(wf, axis=0, keepdims=True)
+    wf_unit = wf / (wf_len + 1e-10)
+    cross = np.cross(wf_unit[:, :-1].T, wf_unit[:, 1:].T).T
+    snap_speed = np.linalg.norm(cross, axis=0) * rate  # rad/s
+
+    window = int(0.050 * rate)
+    pre = max(0, release - window)
+    post_f = min(len(snap_speed) - 1, release + window)
+    snap_deg = np.degrees(snap_speed)
+
+    result["wrist_snap_at_release"] = float(snap_deg[min(release, len(snap_deg) - 1)])
+    result["wrist_snap_peak"] = float(np.max(snap_deg[pre:post_f + 1]))
+
+    # 3. Finger direction alignment with throwing direction
+    throwing_dir = infer_throwing_direction(markers)
+    if throwing_dir is not None:
+        fin_dir_2d = fin_vel[:2, release]
+        norm = np.linalg.norm(fin_dir_2d)
+        if norm > 0:
+            fin_dir_2d = fin_dir_2d / norm
+            result["release_direction_alignment"] = float(np.dot(fin_dir_2d, throwing_dir))
+
+    return result
+
+
 def compute_whip_features(markers, rate, side="R"):
     """Compute arm whip (しなり) features from linear velocities.
 

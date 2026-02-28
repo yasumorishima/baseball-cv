@@ -30,6 +30,7 @@ from skeleton_analysis import (
     compute_knee_flexion,
     compute_lead_leg_block_features,
     compute_shoulder_abduction,
+    compute_release_features,
     compute_smoothness_features,
     compute_whip_features,
     compute_trunk_rotation,
@@ -133,6 +134,10 @@ def extract_peak_features(markers, rate, mode="pitching"):
     # Arm whip (しなり): elbow → wrist → finger speed amplification
     whip = compute_whip_features(markers, rate, side=side)
     features.update(whip)
+
+    # Release point: finger deceleration, wrist snap, direction
+    release = compute_release_features(markers, rate, side=side)
+    features.update(release)
 
     return features
 
