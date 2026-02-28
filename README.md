@@ -47,23 +47,35 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 ![Angular Velocity](data/output/angular_velocity_pitching.png)
 
-### Step 4: Skeleton Features × Performance Correlation
+### Step 4: Body Mechanics → Arm Speed
 
-Correlation between biomechanical features and pitch speed / exit velocity across multiple Driveline OBP athletes.
-
-![Correlation](data/output/correlation_pitching.png)
+What body mechanics drive faster arm action? 60 Driveline OBP athletes (71.3–93.1 mph) analyzed.
 
 ![Scatter](data/output/scatter_pitching.png)
 
-### Step 5: Lead Leg Block Analysis
+The strongest correlations with elbow angular velocity (arm speed):
 
-**Hypothesis**: Pitchers who "block" their lead leg more effectively at foot strike transfer more energy up the kinetic chain → higher pitch speed.
+| Feature | r | p | n |
+|---|---|---|---|
+| Peak Knee Flexion | +0.76 | <0.001 | 60 |
+| Min Knee Flexion | -0.65 | <0.001 | 60 |
+| Peak Shoulder Abduction | +0.51 | <0.001 | 60 |
+| Stride Length / Height | +0.39 | 0.023 | 34 |
+| Trunk Rotation Range | +0.36 | 0.005 | 60 |
 
-The Lead Leg Block (LLB) module detects foot strike from heel marker trajectory, then measures:
-- **Ankle braking**: horizontal velocity change at foot strike (how hard the front foot "plants")
-- **Knee extension velocity**: how quickly the lead knee straightens after ground contact
+![Correlation](data/output/correlation_pitching.png)
 
-These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) and correlated with pitch speed (scatter plots updated in Step 4 above).
+### Step 5: Lead Leg Block — Hypothesis vs Reality
+
+**Hypothesis**: Pitchers who "block" their lead leg more effectively at foot strike produce higher pitch speed.
+
+**What we tested**: 40+ position-based and angle-based braking metrics — knee-ankle offset, knee forward velocity, pelvis deceleration, ankle braking, head stability, stride length, trunk rotation timing — all projected onto the throwing direction and normalized by body height.
+
+**What we found**: Lead leg braking metrics do NOT strongly correlate with pitch speed (r < 0.34, mostly non-significant). The real pathway is **body mechanics → arm speed**, not directly → pitch speed:
+
+![LLB Profile](data/output/llb_profile_pitching.png)
+
+Stride length (relative to height) and trunk rotation timing correlate with arm speed, while position-based braking metrics (knee forward velocity, pelvis deceleration) show weak effects that did not survive increasing the sample size from n=25 to n=35.
 
 **Strong vs Weak Lead Leg Block** — skeleton animation comparison (lead leg in red):
 
@@ -75,19 +87,13 @@ These features are extracted from 41 Driveline OBP athletes (71.3–93.1 mph) an
 | Knee Angle at Foot Strike | 141.5° (bent) | 175.5° (nearly straight) |
 | Knee Extension After Strike | +37.7° (actively extends) | +0.0° (no extension) |
 
-The strong block pitcher lands with a bent knee and actively extends it — transferring ground reaction force up the kinetic chain. The weak block pitcher's knee is already straight at foot strike and doesn't move further.
+The animated GIF compares the two most extreme cases (selected by knee extension behavior). While the visual difference is dramatic, the population-level correlation between knee extension and pitch speed is weak — suggesting the extreme cases are outliers, not representative of a general trend.
 
 **Lead Leg Block → Arm Speed** — full-body skeleton with elbow angular velocity graph:
 
 ![Knee Detail](data/output/llb_knee_detail.gif)
 
-**Lead Leg Block → Arm Speed** — does a stronger leg block produce faster arm action?
-
-![LLB Profile](data/output/llb_profile_pitching.png)
-
-Each dot is one pitcher. The X axis shows a lead leg block metric, the Y axis shows arm speed (angular velocity). Pitchers who extend their knee more after foot strike tend to have faster elbow and shoulder action (r ≈ +0.25–0.29). This supports the biomechanical hypothesis that leg block helps transfer energy to the arm — though the effect is modest with this sample size (n=26).
-
-Note: The animated GIF above compares the two most extreme cases (selected by knee extension behavior, not by pitch speed). The population-level correlation between LLB and pitch speed is weak, suggesting other factors (trunk rotation, arm mechanics, etc.) also play significant roles.
+**Key takeaway**: Pitch speed is the final output of a complex chain. Body mechanics (knee flexion, stride length, trunk rotation) directly drive arm speed, but the link from arm speed to pitch speed depends on additional factors (release point, finger mechanics, ball grip) that motion capture alone cannot measure.
 
 > The same functions work for hitting (front foot block → bat speed). Batting analysis is planned for the next phase.
 

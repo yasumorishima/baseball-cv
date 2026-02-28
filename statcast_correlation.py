@@ -299,19 +299,24 @@ def plot_correlation_matrix(df, mode, output_dir):
 
 
 def plot_scatter(df, mode, output_dir):
-    """Plot scatter plots of key skeleton features vs speed."""
-    speed_key = "pitch_speed_mph" if mode == "pitching" else "exit_velocity_mph"
-    speed_label = "Pitch Speed (mph)" if mode == "pitching" else "Exit Velocity (mph)"
+    """Plot scatter: key biomechanical features vs arm speed (elbow angular velocity).
 
-    if speed_key not in df.columns or df[speed_key].isna().all():
-        print("  No speed data available for scatter plots")
+    The strongest correlations are body mechanics → arm speed, not → pitch speed.
+    """
+    arm_speed_key = "peak_elbow_velocity"
+    arm_label = "Peak Elbow Angular Velocity (deg/s)"
+
+    if arm_speed_key not in df.columns or df[arm_speed_key].isna().all():
+        print("  No elbow velocity data for scatter plots")
         return
 
     feature_pairs = [
-        ("peak_trunk_velocity", "Peak Trunk Angular Velocity (deg/s)"),
-        ("peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
-        ("peak_shoulder_abduction", "Peak Shoulder Abduction (deg)"),
-        ("trunk_rotation_range", "Trunk Rotation Range (deg)"),
+        ("peak_knee_flexion", "Peak Knee Flexion (\u00b0)"),
+        ("llb_stride_length_norm", "Stride Length / Height"),
+        ("trunk_rotation_range", "Trunk Rotation Range (\u00b0)"),
+        ("peak_shoulder_abduction", "Peak Shoulder Abduction (\u00b0)"),
+        ("llb_time_fs_to_peak_trunk_vel", "Foot Strike \u2192 Peak Trunk Vel (s)"),
+        ("llb_head_forward_disp_norm", "Head Forward Disp / Height"),
     ]
 
     available = [(col, label) for col, label in feature_pairs if col in df.columns]
@@ -320,41 +325,43 @@ def plot_scatter(df, mode, output_dir):
         return
 
     n_plots = len(available)
-    n_cols = min(4, n_plots)
+    n_cols = 3
     n_rows = (n_plots + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 5 * n_rows))
-    if n_plots == 1:
-        axes = [axes]
-    else:
-        axes = np.array(axes).flatten()
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows))
+    axes = np.array(axes).flatten()
 
     # Hide unused subplots
     for idx in range(n_plots, len(axes)):
         axes[idx].set_visible(False)
 
     for ax, (col, label) in zip(axes, available):
-        valid = df[[speed_key, col]].dropna()
+        valid = df[[arm_speed_key, col]].dropna()
         if len(valid) < 3:
             ax.text(0.5, 0.5, "Insufficient data", transform=ax.transAxes, ha="center")
             ax.set_title(label)
             continue
 
         x = valid[col].values
-        y = valid[speed_key].values
-        ax.scatter(x, y, alpha=0.7, edgecolors="black", linewidths=0.5, s=60)
+        y = valid[arm_speed_key].values
+        ax.scatter(x, y, alpha=0.7, edgecolors="black", linewidths=0.5, s=60,
+                   color="#2980b9")
 
         # Trend line
         slope, intercept, r_val, p_val, _ = stats.linregress(x, y)
         x_line = np.linspace(x.min(), x.max(), 50)
-        ax.plot(x_line, slope * x_line + intercept, "r--", alpha=0.7)
+        ax.plot(x_line, slope * x_line + intercept, "r--", alpha=0.7, linewidth=2)
 
-        ax.set_xlabel(label)
-        ax.set_ylabel(speed_label)
-        ax.set_title(f"r={r_val:.3f}, p={p_val:.3f}")
+        ax.set_xlabel(label, fontsize=11)
+        ax.set_ylabel(arm_label, fontsize=10)
+        sig = "*" if p_val < 0.05 else ""
+        ax.set_title(f"r={r_val:+.3f}{sig}  (n={len(valid)})", fontsize=12,
+                     fontweight="bold")
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle(f"Skeleton Features vs {speed_label} — Driveline OBP", fontsize=13)
-    plt.tight_layout()
+    fig.suptitle("Body Mechanics \u2192 Arm Speed\n"
+                 "What drives faster elbow action? \u2014 Driveline OBP",
+                 fontsize=14, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
 
     path = output_dir / f"scatter_{mode}.png"
     fig.savefig(str(path), dpi=150, bbox_inches="tight")
@@ -363,55 +370,69 @@ def plot_scatter(df, mode, output_dir):
 
 
 def plot_lead_leg_block_profile(df, mode, output_dir):
-    """Scatter plots: Lead Leg Block metrics vs Arm Speed metrics.
+    """Hypothesis test: Lead Leg Block → Arm Speed.
 
-    Tests the biomechanical hypothesis: stronger leg block → faster arm action.
+    Left panel: what we expected (braking metrics → arm speed) — weak
+    Right panel: what actually works (stride + timing → arm speed) — strong
+
+    Tells the story: "we tested the hypothesis, found the real signal."
     """
-    # LLB features (X axis) vs arm speed features (Y axis)
-    scatter_pairs = [
-        ("llb_knee_extension_range", "Knee Extension After Strike (\u00b0)",
-         "peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
-        ("llb_ankle_velocity_delta", "Ankle Braking at Foot Strike (mm/s)",
-         "peak_elbow_velocity", "Peak Elbow Angular Velocity (deg/s)"),
-        ("llb_knee_extension_range", "Knee Extension After Strike (\u00b0)",
-         "peak_shoulder_velocity", "Peak Shoulder Angular Velocity (deg/s)"),
+    arm_key = "peak_elbow_velocity"
+    arm_label = "Peak Elbow Angular Velocity (deg/s)"
+
+    if arm_key not in df.columns or df[arm_key].isna().all():
+        print("  No elbow velocity data for LLB profile")
+        return
+
+    # Left: braking hypothesis (weak correlations)
+    # Right: what actually correlates (strong)
+    panels = [
+        # (x_col, x_label, color, panel_title)
+        ("llb_knee_forward_vel_post", "Knee Forward Vel After Strike (mm/s)",
+         "#e74c3c", "Hypothesis: Knee Braking"),
+        ("llb_pelvis_decel", "Pelvis Deceleration (mm/s\u00b2)",
+         "#e67e22", "Hypothesis: Pelvis Braking"),
+        ("llb_stride_length_norm", "Stride Length / Height",
+         "#2980b9", "Finding: Stride Length"),
+        ("llb_time_fs_to_peak_trunk_vel", "Foot Strike \u2192 Peak Trunk Vel (s)",
+         "#27ae60", "Finding: Trunk Rotation Timing"),
     ]
 
-    available = [(xc, xl, yc, yl) for xc, xl, yc, yl in scatter_pairs
-                 if xc in df.columns and yc in df.columns
-                 and df[[xc, yc]].dropna().shape[0] >= 5]
+    available = [(xc, xl, c, t) for xc, xl, c, t in panels
+                 if xc in df.columns
+                 and df[[xc, arm_key]].dropna().shape[0] >= 5]
     if not available:
-        print("  Not enough data for LLB vs arm speed scatter plots")
+        print("  Not enough data for LLB profile")
         return
 
     n = len(available)
-    fig, axes = plt.subplots(1, n, figsize=(7 * n, 6))
+    fig, axes = plt.subplots(1, n, figsize=(6 * n, 5.5))
     if n == 1:
         axes = [axes]
 
-    for ax, (xc, xl, yc, yl) in zip(axes, available):
-        valid = df[[xc, yc]].dropna()
-        x, y = valid[xc].values, valid[yc].values
+    for ax, (xc, xl, color, title) in zip(axes, available):
+        valid = df[[xc, arm_key]].dropna()
+        x, y = valid[xc].values, valid[arm_key].values
 
         ax.scatter(x, y, alpha=0.7, edgecolors="black", linewidths=0.5, s=70,
-                   color="#2980b9")
+                   color=color)
 
-        # Trend line + correlation
         slope, intercept, r_val, p_val, _ = stats.linregress(x, y)
         x_line = np.linspace(x.min(), x.max(), 50)
-        ax.plot(x_line, slope * x_line + intercept, "r--", alpha=0.7, linewidth=2)
+        ax.plot(x_line, slope * x_line + intercept, "--", color=color,
+                alpha=0.8, linewidth=2)
 
-        ax.set_xlabel(xl, fontsize=12, fontweight="bold")
-        ax.set_ylabel(yl, fontsize=12, fontweight="bold")
-        sig = "*" if p_val < 0.05 else ""
-        ax.set_title(f"r = {r_val:+.3f}{sig}  (n={len(valid)})",
-                     fontsize=13, fontweight="bold")
+        ax.set_xlabel(xl, fontsize=11, fontweight="bold")
+        ax.set_ylabel(arm_label, fontsize=10)
+        sig = "***" if p_val < 0.001 else "**" if p_val < 0.01 else "*" if p_val < 0.05 else ""
+        ax.set_title(f"{title}\nr={r_val:+.3f}{sig}  (n={len(valid)})",
+                     fontsize=12, fontweight="bold")
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Lead Leg Block \u2192 Arm Speed\n"
-                 "Does a stronger leg block produce faster arm action?",
-                 fontsize=15, fontweight="bold", y=1.02)
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.suptitle("Lead Leg Block \u2192 Arm Speed: Hypothesis vs Reality\n"
+                 "Braking metrics are weak \u2014 stride & trunk timing matter more",
+                 fontsize=14, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.90])
 
     path = output_dir / f"llb_profile_{mode}.png"
     fig.savefig(str(path), dpi=150, bbox_inches="tight")
