@@ -56,7 +56,11 @@ Joint angles extracted from C3D motion capture data across the full pitching/hit
 
 There is an optimal braking level — deviation from it delays trunk rotation (r = +0.80). The human head weighs ~5 kg; when it stabilizes, the trunk reaches peak rotational velocity dramatically faster (r = -0.88).
 
-**Head Stable vs Unstable** — skeleton animation comparison (head markers & trail in red), aligned on foot strike:
+**Head Stable vs Unstable** — foot strike vs 100ms after (head drift: 6cm vs 47cm):
+
+![Head Stability Static](data/output/head_stability_static.png)
+
+Skeleton animation comparison (head markers & trail in red), aligned on foot strike:
 
 ![Head Stability Comparison](data/output/head_stability_comparison.gif)
 
