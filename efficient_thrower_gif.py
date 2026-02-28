@@ -179,9 +179,25 @@ def create_gif(output_path):
     bounds1 = compute_bounds(pts1)
     bounds5 = compute_bounds(pts5)
 
-    # Foot anchor: lead heel position at foot strike
-    anchor1 = get_marker_pos(labels1, pts1, fs1, "LHEE")
-    anchor5 = get_marker_pos(labels5, pts5, fs5, "LHEE")
+    # Foot anchor: LHEE position when fully loaded (min Z after foot strike)
+    def get_anchor(labels, points, fs):
+        idx = get_marker_index(labels, "LHEE")
+        if idx < 0:
+            return None
+        window_end = min(fs + 120, points.shape[2])
+        hz = points[2, idx, fs:window_end]
+        valid = ~np.isnan(hz) & (hz != 0)
+        if not valid.any():
+            return None
+        fi = fs + int(np.argmin(np.where(valid, hz, np.inf)))
+        x, y, z = points[0, idx, fi], points[1, idx, fi], points[2, idx, fi]
+        if np.isnan(x) or (x == 0 and y == 0 and z == 0):
+            return None
+        print(f"    anchor frame={fi} XYZ=({x:.3f}, {y:.3f}, {z:.3f})")
+        return np.array([x, y, z])
+
+    anchor1 = get_anchor(labels1, pts1, fs1)
+    anchor5 = get_anchor(labels5, pts5, fs5)
 
     fig, (ax1, ax5) = plt.subplots(1, 2, figsize=(16, 8),
                                     subplot_kw={"projection": "3d"})
