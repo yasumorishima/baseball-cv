@@ -4,26 +4,27 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 
 ## Pipeline Overview
 
-| Step | Script | Description |
-|------|--------|-------------|
-| 1 | `skeleton_c3d.py` | Load Driveline OBP C3D files with [ezc3d](https://github.com/pyomeca/ezc3d) → 3D skeleton visualization & animation |
-| 2 | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
-| 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
-| 4 | `statcast_correlation.py` | Feature extraction from C3D: 100 biomechanical features across 60 pitchers |
-| 5 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
-| 6 | `body_efficiency_hitting.py` `efficient_hitter_gif.py` | **Efficient hitting**: 40 hitters, weight transfer drives R²+0.378, Q5 hits 18.6 mph harder at similar bat speed and *smaller* body size |
+| Section | Script | Description |
+|---------|--------|-------------|
+| **Getting Started** | `skeleton_c3d.py` | Load Driveline OBP C3D files with [ezc3d](https://github.com/pyomeca/ezc3d) → 3D skeleton visualization & animation |
+| | `skeleton_video.py` | MediaPipe Pose detection on video → skeleton overlay & keypoint CSV |
+| | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
+| **Pitching Analysis** | `statcast_correlation.py --mode pitching` | Feature extraction: 100 biomechanical features across 60 pitchers |
+| | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
+| **Hitting Analysis** | `statcast_correlation.py --mode hitting` | Feature extraction: biomechanical features across 40 hitters |
+| | `body_efficiency_hitting.py` `efficient_hitter_gif.py` | **Efficient hitting**: 4-component model (R²=0.159→0.599), same bat speed → 20 mph gap |
 
 ## Articles
 
-| Steps | Title | Links |
-|-------|-------|-------|
-| 1–3 | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f) |
-| 4–5 | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132) |
-| 6 | Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity | *(coming soon)* |
+| Section | Title | Links |
+|---------|-------|-------|
+| Getting Started | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f) |
+| Pitching Analysis | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132) |
+| Hitting Analysis | Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity | *(coming soon)* |
 
 ## Results
 
-### Step 1: 3D Skeleton Visualization (ezc3d)
+### Getting Started: Skeleton Visualization & Joint Angles
 
 C3D files store 3D marker coordinates captured by optical motion capture. Each frame records the XYZ position of every marker attached to the athlete's body.
 
@@ -56,8 +57,6 @@ The 10 bat markers (red) are rendered separately from the body skeleton, making 
 
 ---
 
-### Step 2: Video-Based Skeleton Detection (MediaPipe)
-
 For setups without C3D equipment, Google's MediaPipe Pose detects 33 skeletal landmarks from standard video in real time.
 
 ```python
@@ -71,11 +70,9 @@ pose = mp_pose.Pose(
 )
 ```
 
-Outputs a keypoint CSV and an annotated video overlay. Steps 3–5 use C3D data, but MediaPipe is a practical entry point when professional equipment isn't available.
+Outputs a keypoint CSV and an annotated video overlay. The pitching and hitting analyses below use C3D data, but MediaPipe is a practical entry point when professional equipment isn't available.
 
 ---
-
-### Step 3: Joint Angle & Angular Velocity Extraction
 
 Joint angles (how much each joint opens/closes) and angular velocities (how fast each joint rotates, in degrees/sec) are computed frame-by-frame from the C3D marker positions.
 
@@ -90,7 +87,7 @@ Joint angles (how much each joint opens/closes) and angular velocities (how fast
 | Trunk Rotation | 0.0° | 58.0° | 57.9° |
 | Knee Flexion (R) | 99.1° | 163.8° | 64.7° |
 
-Elbow flexion spans ~106° — the arm goes from nearly straight at extension to sharply bent near max external rotation, then extends again at release. Trunk rotation (58°) appears modest by comparison, but emerges as the strongest correlate of pitch velocity in Step 4.
+Elbow flexion spans ~106° — the arm goes from nearly straight at extension to sharply bent near max external rotation, then extends again at release. Trunk rotation (58°) appears modest by comparison, but emerges as the strongest correlate of pitch velocity in the pitching analysis.
 
 **Angular Velocities — when does each joint move fastest?**
 
@@ -98,7 +95,7 @@ Elbow flexion spans ~106° — the arm goes from nearly straight at extension to
 
 The time-series shows each joint's rotational speed per frame. This reveals the proximal-to-distal kinematic sequence: hips and trunk rotate first, followed by the shoulder, then elbow and wrist.
 
-**Pitch speed correlation (16 pitchers, Step 4 preview):**
+**Pitch speed correlation (16 pitchers, pitching analysis preview):**
 
 | Feature | r | p-value |
 |---------|---|---------|
@@ -107,13 +104,13 @@ The time-series shows each joint's rotational speed per frame. This reveals the 
 | Peak Shoulder Abduction | 0.180 | 0.520 |
 | **Trunk Rotation Range** | **0.425** | **0.114** |
 
-With 16 samples the p-values don't reach significance, but trunk rotation range shows the strongest correlation (r=0.425). Step 4–5 expand this with 60 pitchers.
+With 16 samples the p-values don't reach significance, but trunk rotation range shows the strongest correlation (r=0.425). The full pitching analysis expands this with 60 pitchers.
 
 > 📝 [3D Skeleton Detection from Baseball Motion Capture Data](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f))
 
 ---
 
-### Step 4–5: Efficient Throwing — Body Mechanics Analysis
+### Pitching Analysis: Efficient Throwing
 
 60 Driveline OBP pitchers analyzed. **Finding**: Pitchers with identical arm speed (24–26 m/s) vary by 13 mph in pitch speed. Four independent body mechanics factors explain 17.8% additional variance beyond arm speed alone.
 
@@ -147,7 +144,7 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 
 ---
 
-### Step 6: Efficient Hitting — Body Mechanics Analysis
+### Hitting Analysis: Efficient Hitting
 
 40 Driveline OBP hitters analyzed. **Finding**: Bat speed alone barely predicts exit velocity (R²=0.097). Adding weight transfer (stride) alone jumps R² to 0.550 (+0.378) — the single largest factor. The top 20% of body efficiency hitters produce 20.9 mph more exit velocity despite having *lower* bat speed than the bottom 20%.
 
@@ -207,33 +204,35 @@ pip install -r requirements.txt
 Sample C3D files are included in `data/raw/`. For the full dataset:
 - [Driveline OpenBiomechanics Project](https://github.com/drivelineresearch/openbiomechanics) (CC BY-NC-SA 4.0)
 
-For MediaPipe video demo (Step 2), download a free baseball video from [Pexels](https://www.pexels.com/search/videos/baseball/) and save to `data/videos/`.
+For MediaPipe video demo, download a free baseball video from [Pexels](https://www.pexels.com/search/videos/baseball/) and save to `data/videos/`.
 
 ## Usage
 
 ```bash
-# Step 1: C3D skeleton visualization
+# Getting Started: skeleton visualization
 python skeleton_c3d.py                    # Both pitching & hitting
 python skeleton_c3d.py --mode pitching    # Pitching only
 
-# Step 2: MediaPipe video skeleton detection
+# Getting Started: MediaPipe video skeleton detection
 python skeleton_video.py --input data/videos/batting.mp4
 
-# Step 3: Joint angle analysis
+# Getting Started: joint angle analysis
 python skeleton_analysis.py --mode pitching
 python skeleton_analysis.py --mode hitting
 
-# Step 4: Feature extraction (downloads C3D files, builds features_pitching.csv)
-python statcast_correlation.py --mode pitching --download 40
+# Pitching Analysis: feature extraction (downloads C3D files, builds features_pitching.csv)
+python statcast_correlation.py --mode pitching --download 60
 
-# Step 5: Body efficiency analysis (pitching)
-python body_efficiency_analysis.py         # Scatter plots + R2 breakdown
-python efficient_thrower_gif.py            # Skeleton animation Q1 vs Q5
+# Pitching Analysis: body efficiency (scatter plots + R2 breakdown + skeleton animation)
+python body_efficiency_analysis.py
+python efficient_thrower_gif.py
 
-# Step 6: Body efficiency analysis (hitting)
+# Hitting Analysis: feature extraction
 python statcast_correlation.py --mode hitting --download 40
-python body_efficiency_hitting.py          # Scatter plots + R2 breakdown
-python efficient_hitter_gif.py             # Skeleton animation Q1 vs Q5
+
+# Hitting Analysis: body efficiency
+python body_efficiency_hitting.py
+python efficient_hitter_gif.py
 ```
 
 ## Data Sources & Credits
