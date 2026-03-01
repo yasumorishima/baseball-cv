@@ -25,10 +25,6 @@ import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-import matplotlib.font_manager as _fm
-_jp_fonts = [f.name for f in _fm.fontManager.ttflist if "Noto" in f.name and "CJK" in f.name]
-if _jp_fonts:
-    plt.rcParams["font.family"] = _jp_fonts[0]
 
 OUTPUT_DIR = Path("data/output")
 FEATURES_CSV = OUTPUT_DIR / "features_hitting.csv"
@@ -137,16 +133,16 @@ def plot_story(df, r2_steps, out_path):
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax1.plot(xline, np.polyval(z, xline), color="black", lw=2, alpha=0.4)
-    ax1.set_xlabel("バットスピード（手首ピーク速度 m/s）", fontsize=11)
-    ax1.set_ylabel("打球速度 (mph)", fontsize=11)
-    ax1.set_title("バットスピードが同じでも打球速度に差がある\n"
-                  "（緑=腰の回転が速い、赤=遅い）", fontsize=10)
+    ax1.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=11)
+    ax1.set_ylabel("Exit velocity (mph)", fontsize=11)
+    ax1.set_title("Same bat speed → different exit velocity\n"
+                  "(green=fast hip rotation, red=slow)", fontsize=10)
 
     # Panel 2: Incremental R2 bars
     ax2 = fig.add_subplot(1, 3, 2)
     r2_vals = [r for r, *_ in r2_steps]
-    labels_short = ["バット\nスピード", "+腰の\n回転", "+体重\n移動",
-                    "+前脚\nブレーキ", "+コイル\nロード"][:len(r2_vals)]
+    labels_short = ["Bat\nspeed", "+Hip\nrotation", "+Weight\ntransfer",
+                    "+Lead\nleg", "+Coil\nload"][:len(r2_vals)]
     colors = ["#2980b9", "#27ae60", "#8e44ad", "#e67e22", "#e74c3c"][:len(r2_vals)]
     ax2.bar(range(len(r2_vals)), r2_vals, color=colors, edgecolor="white", lw=2)
     for i, r2 in enumerate(r2_vals):
@@ -157,9 +153,9 @@ def plot_story(df, r2_steps, out_path):
                      fontsize=8, color="white", fontweight="bold")
     ax2.set_xticks(range(len(labels_short)))
     ax2.set_xticklabels(labels_short, fontsize=10)
-    ax2.set_ylabel("R²（打球速度の説明できる割合）", fontsize=11)
+    ax2.set_ylabel("R2 (variance explained)", fontsize=11)
     ax2.set_ylim(0, min(max(r2_vals) + 0.15, 1.0))
-    ax2.set_title("各身体要素を追加するごとに\n予測精度が上がる", fontsize=10)
+    ax2.set_title("Each body component adds\npredictive power", fontsize=10)
 
     # Panel 3: Q1/Q5 exit velocity bars (with bat speed annotation)
     ax3 = fig.add_subplot(1, 3, 3)
@@ -174,18 +170,18 @@ def plot_story(df, r2_steps, out_path):
         ax3.text(i, ev + 0.3, f"{ev:.1f}", ha="center", fontweight="bold", fontsize=10)
         ax3.text(i, ev - 3.5, f"bat\n{bat:.1f}", ha="center", fontsize=8, color="white")
     ax3.set_xticks(x)
-    ax3.set_xticklabels(["Q1\n（最低）", "Q2", "Q3", "Q4", "Q5\n（最高）"], fontsize=10)
-    ax3.set_ylabel("打球速度の平均 (mph)", fontsize=11)
+    ax3.set_xticklabels(["Q1\n(worst)", "Q2", "Q3", "Q4", "Q5\n(best)"], fontsize=10)
+    ax3.set_ylabel("Mean exit velocity (mph)", fontsize=11)
     q1_ev = q_grp[q_grp["eff_q"] == "Q1"]["exit_velo"].values[0] if "Q1" in q_grp["eff_q"].values else 80
     q5_ev = q_grp[q_grp["eff_q"] == "Q5"]["exit_velo"].values[0] if "Q5" in q_grp["eff_q"].values else 95
     ax3.set_ylim(max(q1_ev - 10, 60), q5_ev + 5)
-    ax3.set_title(f"体の使い方で打球速度が変わる\n"
-                  f"（Q1={q1_ev:.1f} mph vs Q5={q5_ev:.1f} mph）", fontsize=10)
+    ax3.set_title(f"Same bat speed, different body use\n"
+                  f"(Q1={q1_ev:.1f} mph vs Q5={q5_ev:.1f} mph)", fontsize=10)
 
     n_total = len(df.dropna(subset=[TARGET]))
     r2_max = r2_vals[-1] if r2_vals else 0
     fig.suptitle(
-        f"打撃の効率性：体の使い方がバットスピードを超えた影響を持つ（n={n_total}, R²={r2_max:.3f}）",
+        f"Efficient Hitting: Body Mechanics Beyond Bat Speed (n={n_total}, R2={r2_max:.3f})",
         fontsize=13, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
@@ -206,10 +202,10 @@ def plot_breakdown(df, out_path):
         return
 
     label_map = {
-        "peak_trunk_velocity": "腰の回転\n（体幹速度）",
-        "llb_stride_forward": "体重移動\n（ストライド幅）",
-        "llb_ankle_braking_decel": "前脚のブレーキ\n（足首制動）",
-        "trunk_rotation_range": "コイル/ロード\n（回転可動域）",
+        "peak_trunk_velocity": "Hip Rotation\n(trunk vel)",
+        "llb_stride_forward": "Weight Transfer\n(stride)",
+        "llb_ankle_braking_decel": "Lead Leg Block\n(ankle brake)",
+        "trunk_rotation_range": "Coil / Load\n(rotation range)",
     }
     body_labels = [label_map.get(v, v) for v in body_vars]
     # All of these: higher = more efficient (for stride, velocity, decel, range)
@@ -233,17 +229,17 @@ def plot_breakdown(df, out_path):
     q1_bat = df[df["eff_q"] == "Q1"][BAT_SPEED].mean()
     q5_bat = df[df["eff_q"] == "Q5"][BAT_SPEED].mean()
 
-    ax1.bar(x - w / 2, q1_z, w, label=f"Q1（体の効率 最低・打球速度 {q1_ev:.1f} mph）",
+    ax1.bar(x - w / 2, q1_z, w, label=f"Q1 (Worst body, {q1_ev:.1f} mph exit)",
             color="#e74c3c", alpha=0.8, edgecolor="white")
-    ax1.bar(x + w / 2, q5_z, w, label=f"Q5（体の効率 最高・打球速度 {q5_ev:.1f} mph）",
+    ax1.bar(x + w / 2, q5_z, w, label=f"Q5 (Best body, {q5_ev:.1f} mph exit)",
             color="#27ae60", alpha=0.8, edgecolor="white")
     ax1.set_xticks(x)
     ax1.set_xticklabels(body_labels, fontsize=11)
     ax1.axhline(0, color="black", lw=1, ls="--", alpha=0.5)
-    ax1.set_ylabel("Zスコア（プラス = より効率的）", fontsize=11)
+    ax1.set_ylabel("Z-score (positive = more efficient)", fontsize=11)
     ax1.set_title(
-        f"体の動き比較：バットスピードほぼ同じ（{q1_bat:.1f} vs {q5_bat:.1f} m/s）\n"
-        f"→ 打球速度は {q5_ev - q1_ev:.1f} mph 差！",
+        f"Body Mechanics: Similar bat speed ({q1_bat:.1f} vs {q5_bat:.1f} m/s)\n"
+        f"--> {q5_ev - q1_ev:.1f} mph exit velocity gap",
         fontsize=11,
     )
     ax1.legend(fontsize=10)
@@ -268,10 +264,10 @@ def plot_breakdown(df, out_path):
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax2.plot(xline, np.polyval(z, xline), "k--", lw=2, alpha=0.4)
-    ax2.set_xlabel("バットスピード（手首ピーク速度 m/s）", fontsize=11)
-    ax2.set_ylabel("打球速度 (mph)", fontsize=11)
-    ax2.set_title("「体の使い方が効率的な打者」は実在する\n"
-                  "（同じバットスピードでも打球速度に幅がある）", fontsize=11)
+    ax2.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=11)
+    ax2.set_ylabel("Exit velocity (mph)", fontsize=11)
+    ax2.set_title('"Efficient hitting" exists\n'
+                  "(same bat speed -> exit velocity range)", fontsize=11)
     ax2.legend(fontsize=9, loc="upper left")
 
     r2_delta = 0
@@ -288,9 +284,8 @@ def plot_breakdown(df, out_path):
             r2_delta = r2_score(d1[TARGET].values, X1 @ c1) - r2_score(d0[TARGET].values, X0 @ c0)
 
     fig.suptitle(
-        f"打撃の効率性：体の使い方がバットスピードを超えて打球速度を説明する（追加説明力 +{r2_delta * 100:.1f}%）\n"
-        f"体効率スコアとは：バットスピードが同じ選手と比べたとき、体の使い方で何mph上乗せできているか",
-        fontsize=11, fontweight="bold", y=1.02,
+        f"Efficient Hitting: Body Mechanics Explain {r2_delta * 100:.1f}% Additional Variance Beyond Bat Speed",
+        fontsize=12, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=150, bbox_inches="tight")

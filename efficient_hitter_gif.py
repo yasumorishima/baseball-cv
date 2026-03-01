@@ -25,11 +25,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-import matplotlib.font_manager as _fm
-_jp_fonts = [f.name for f in _fm.fontManager.ttflist if "Noto" in f.name and "CJK" in f.name]
-if _jp_fonts:
-    plt.rcParams["font.family"] = _jp_fonts[0]
-
 from skeleton_c3d import BODY_CONNECTIONS, get_marker_index
 
 OUTPUT_DIR = Path("data/output")
@@ -123,12 +118,12 @@ def draw_skeleton(ax, labels, points, fi, bounds, is_fs, title, meta, foot_ancho
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
 
-    fs_tag = "  ★ 踏み込み瞬間 ★" if is_fs else ""
+    fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
     eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
         f"{title}{fs_tag}\n"
-        f"打球速度 {meta['exit_velocity_mph']:.1f} mph  |  バットスピード {meta['bat_speed']:.2f} m/s\n"
-        f"ストライド {meta['stride_m']:.2f}m  |  体効率スコア {eff_sign}{meta['body_efficiency']:.2f} mph",
+        f"exit vel {meta['exit_velocity_mph']:.1f} mph  |  bat {meta['bat_speed']:.2f} m/s  |  "
+        f"stride {meta['stride_m']:.2f}m  |  body eff {eff_sign}{meta['body_efficiency']:.2f} mph",
         fontsize=10, fontweight="bold",
     )
     ax.view_init(elev=15, azim=50)
@@ -207,14 +202,14 @@ def create_gif(output_path):
         is_fs = abs(frame_num - fs_gif) <= 1
 
         draw_skeleton(ax1, labels1, pts1, fi1, bounds1, is_fs,
-                      "Q1：体の使い方・下位20%（非効率）", Q1_META, anchor1)
+                      "Q1: Short stride (poor body use)", Q1_META, anchor1)
         draw_skeleton(ax5, labels5, pts5, fi5, bounds5, is_fs,
-                      "Q5：体の使い方・上位20%（効率的）", Q5_META, anchor5)
+                      "Q5: Long stride (efficient body use)", Q5_META, anchor5)
 
         fig.suptitle(
-            "打撃の効率性：バットスピードがほぼ同じ（7.2 vs 7.8 m/s）なのに打球速度が22.6 mph違う（Driveline OBP）\n"
-            "赤 = 踏み込み脚（前脚）  |  オレンジ星 = 踏み込み地点\n"
-            "体効率スコアとは：バットスピードだけでは説明できない打球速度の差（＋が大きいほど体の使い方が良い・単位mph）",
+            "Efficient Hitting: Same bat speed (~7 m/s) -> 22.6 mph exit velocity gap (Driveline OBP)\n"
+            "Red = lead leg (stride foot)  |  Orange star = foot strike landing\n"
+            "Body efficiency score = exit velocity above what bat speed + size alone predicts (+ is good)",
             fontsize=11, fontweight="bold", y=0.99,
         )
 

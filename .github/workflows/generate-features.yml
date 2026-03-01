@@ -26,9 +26,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Japanese fonts
-        run: sudo apt-get install -y fonts-noto-cjk
-
       - name: Install dependencies
         run: pip install ezc3d numpy pandas scipy matplotlib scikit-learn pillow
 

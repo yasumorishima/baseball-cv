@@ -3,11 +3,12 @@
 Key story (hitting):
   After foot strike, the lead knee must rapidly EXTEND to create a fixed axis
   for hip rotation.  Q5 (efficient) knee extends fast from a bent position.
-  Q1 (inefficient) knee stays bent or collapses forward.
+  Q1 (inefficient) knee stays bent or collapses forward — no stable axis.
 
 Layout:
-  Top: Q1 (poor) | Q5 (efficient) 3-D skeletons, lead leg in red
-  Bottom: knee angle + knee extension velocity over time, dot tracking current frame
+  Top:    Q1 (poor) | Q5 (efficient) 3-D skeletons, lead leg in red
+  Bottom: knee angle (solid) + knee extension velocity (dashed) over time,
+          dot tracks the current animation frame
 
 Usage:
     python llb_knee_detail_hitting.py
@@ -22,7 +23,6 @@ import ezc3d
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as _fm
 import numpy as np
 from matplotlib import animation
 
@@ -32,10 +32,6 @@ from skeleton_analysis import (
     load_c3d,
 )
 from skeleton_c3d import BODY_CONNECTIONS, get_marker_index
-
-_jp = [f.name for f in _fm.fontManager.ttflist if "Noto" in f.name and "CJK" in f.name]
-if _jp:
-    plt.rcParams["font.family"] = _jp[0]
 
 OUTPUT_DIR = Path("data/output")
 RAW_DIR = Path("data/raw")
@@ -48,14 +44,14 @@ Q1_META = {
     "exit_velocity_mph": 74.6, "bat_speed": 7.23,
     "stride_m": 0.718, "body_efficiency": -11.88,
     "llb_foot_strike_frame": 374,
-    "label": "Q1：前脚ブレーキ 弱",
+    "label": "Q1: Weak Lead Leg Block",
     "color": "#e67e22",
 }
 Q5_META = {
     "exit_velocity_mph": 97.2, "bat_speed": 7.80,
     "stride_m": 0.993, "body_efficiency": +9.70,
     "llb_foot_strike_frame": 574,
-    "label": "Q5：前脚ブレーキ 強",
+    "label": "Q5: Strong Lead Leg Block",
     "color": "#2980b9",
 }
 
@@ -117,13 +113,13 @@ def draw_skeleton(ax, labels, points, fi, bnd, meta, is_fs):
     ax.set_zticklabels([])
     ax.view_init(elev=15, azim=50)
 
-    fs_tag = "  ★ 踏み込み ★" if is_fs else ""
+    fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
     eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
         f"{meta['label']}{fs_tag}\n"
-        f"打球速度 {meta['exit_velocity_mph']:.1f} mph  |  "
-        f"ストライド {meta['stride_m']:.2f}m  |  "
-        f"体効率 {eff_sign}{meta['body_efficiency']:.2f} mph",
+        f"exit {meta['exit_velocity_mph']:.1f} mph  |  "
+        f"stride {meta['stride_m']:.2f} m  |  "
+        f"body eff {eff_sign}{meta['body_efficiency']:.2f} mph",
         fontsize=10, fontweight="bold", color=meta["color"],
     )
 
@@ -131,27 +127,24 @@ def draw_skeleton(ax, labels, points, fi, bnd, meta, is_fs):
 def draw_graph(ax, common_time, knee_q1, knee_q5, vel_q1, vel_q5, frame_num):
     ax.clear()
 
-    # Knee angle (solid line)
     ax.plot(common_time, knee_q1, color=Q1_META["color"], linewidth=2.5,
-            label=f"Q1 膝角度", linestyle="-")
+            label="Q1 knee angle")
     ax.plot(common_time, knee_q5, color=Q5_META["color"], linewidth=2.5,
-            label=f"Q5 膝角度", linestyle="-")
+            label="Q5 knee angle")
 
-    # Knee extension velocity (dashed line, right axis)
     ax2 = ax.twinx()
     ax2.plot(common_time, vel_q1, color=Q1_META["color"], linewidth=1.5,
              linestyle="--", alpha=0.7)
     ax2.plot(common_time, vel_q5, color=Q5_META["color"], linewidth=1.5,
-             linestyle="--", alpha=0.7, label="膝の伸展速度（破線）")
-    ax2.set_ylabel("膝の伸展速度 (°/s)\n↑ 伸びる  ↓ 曲がる", fontsize=9, color="gray")
+             linestyle="--", alpha=0.7)
+    ax2.set_ylabel("Knee extension velocity (deg/s)\n+ extending  - flexing",
+                   fontsize=9, color="gray")
     ax2.tick_params(axis="y", labelcolor="gray")
     ax2.axhline(0, color="gray", linewidth=0.5, alpha=0.4)
 
-    # Foot strike line
     ax.axvline(0, color="#e74c3c", linewidth=2.5, linestyle="--",
-               alpha=0.85, label="踏み込み瞬間")
+               alpha=0.85, label="Foot strike")
 
-    # Current position dots
     t_now = common_time[frame_num]
     ax.scatter(t_now, knee_q1[frame_num], s=180, c=Q1_META["color"],
                zorder=6, edgecolors="black", linewidths=2)
@@ -159,13 +152,13 @@ def draw_graph(ax, common_time, knee_q1, knee_q5, vel_q1, vel_q5, frame_num):
                zorder=6, edgecolors="black", linewidths=2)
 
     ax.set_xlabel(
-        "踏み込み前 ← 時間 (秒) → 踏み込み後",
+        "<-- before foot strike   |   Time (s)   |   after foot strike -->",
         fontsize=11, fontweight="bold",
     )
-    ax.set_ylabel("前膝の角度 (°)\n小さい = より曲がっている", fontsize=10)
+    ax.set_ylabel("Lead knee angle (deg)\nsmaller = more bent", fontsize=10)
     ax.set_title(
-        "踏み込み後に前膝が素早く伸びる（Q5）→ 腰の回転軸が固定される → 打球速度↑\n"
-        "実線 = 膝角度　破線 = 伸展速度",
+        "Q5: knee bends at foot strike then extends rapidly -> fixes hip rotation axis -> higher exit velocity\n"
+        "Solid line = knee angle   Dashed line = extension velocity",
         fontsize=10, fontweight="bold",
     )
     ax.legend(loc="upper left", fontsize=9, framealpha=0.9)
@@ -176,10 +169,9 @@ def draw_graph(ax, common_time, knee_q1, knee_q5, vel_q1, vel_q5, frame_num):
 def create_gif(output_path):
     if not Q1_FILE.exists() or not Q5_FILE.exists():
         raise FileNotFoundError(
-            f"C3Dファイルが見つかりません: {Q1_FILE} / {Q5_FILE}"
+            f"Missing C3D files: {Q1_FILE} or {Q5_FILE}"
         )
 
-    # Load C3D
     c1 = ezc3d.c3d(str(Q1_FILE))
     labels1 = c1["parameters"]["POINT"]["LABELS"]["value"]
     pts1 = c1["data"]["points"]
@@ -193,7 +185,6 @@ def create_gif(output_path):
     fs1 = Q1_META["llb_foot_strike_frame"]
     fs5 = Q5_META["llb_foot_strike_frame"]
 
-    # Knee angles & velocities
     markers1, _, _ = load_c3d(str(Q1_FILE))
     markers5, _, _ = load_c3d(str(Q5_FILE))
     knee1 = compute_knee_flexion(markers1, "L")
@@ -201,7 +192,6 @@ def create_gif(output_path):
     vel1 = compute_angular_velocity(knee1, rate1)
     vel5 = compute_angular_velocity(knee5, rate5)
 
-    # Time window: 0.35s pre / 0.45s post foot strike
     pre_sec, post_sec = 0.35, 0.45
     total_sec = pre_sec + post_sec
 
@@ -217,7 +207,6 @@ def create_gif(output_path):
 
     common_time = np.linspace(-pre_sec, post_sec, n_anim)
 
-    # Interpolate knee angle & velocity onto common time axis
     gt1 = (np.arange(start1, end1) - fs1) / rate1
     gt5 = (np.arange(start5, end5) - fs5) / rate5
     knee1_i = np.interp(common_time, gt1, knee1[start1:end1])
@@ -249,22 +238,21 @@ def create_gif(output_path):
         draw_skeleton(ax_q5, labels5, pts5, fi5, bnd5, Q5_META, is_fs)
         draw_graph(ax_g, common_time, knee1_i, knee5_i, vel1_i, vel5_i, frame_num)
 
-        # Knee angle overlays
         for ax_pos, kang, kvel, meta in [
             (0.03, knee1_i[frame_num], vel1_i[frame_num], Q1_META),
             (0.53, knee5_i[frame_num], vel5_i[frame_num], Q5_META),
         ]:
             t = fig.text(
-                ax_pos, 0.56, f"膝角度: {kang:.0f}°",
+                ax_pos, 0.56, f"Knee: {kang:.0f}°",
                 fontsize=14, fontweight="bold", color="#2c3e50",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                           edgecolor="#2c3e50", alpha=0.95),
             )
             overlay_texts.append(t)
             vc = "#27ae60" if kvel > 0 else "#c0392b"
-            vl = "↑ 伸展中" if kvel > 0 else "↓ 屈曲中"
+            vl = "extending" if kvel > 0 else "flexing"
             t2 = fig.text(
-                ax_pos, 0.52, f"{abs(kvel):.0f}°/s {vl}",
+                ax_pos, 0.52, f"{abs(kvel):.0f} deg/s {vl}",
                 fontsize=12, fontweight="bold", color=vc,
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
                           edgecolor=vc, alpha=0.95),
@@ -274,7 +262,7 @@ def create_gif(output_path):
         if is_fs:
             for xpos in (0.23, 0.71):
                 t = fig.text(
-                    xpos, 0.29, "⚡ 踏み込み瞬間",
+                    xpos, 0.29, "FOOT STRIKE",
                     fontsize=13, fontweight="bold", color="white",
                     bbox=dict(boxstyle="round,pad=0.4",
                               facecolor="#e74c3c", alpha=0.95),
@@ -284,7 +272,7 @@ def create_gif(output_path):
         if is_post:
             t = fig.text(
                 0.35, 0.29,
-                "膝が素早く伸びて\n腰の回転軸を固定 →",
+                "Knee extends fast\n-> hip axis locked ->",
                 fontsize=10, fontweight="bold", color="#2980b9",
                 bbox=dict(boxstyle="round,pad=0.3",
                           facecolor="#eaf4fb", edgecolor="#2980b9", alpha=0.95),
@@ -292,7 +280,7 @@ def create_gif(output_path):
             overlay_texts.append(t)
             t2 = fig.text(
                 0.78, 0.29,
-                "膝の伸展が遅く\n前方に流れる →",
+                "Knee stays bent\n-> body leaks forward ->",
                 fontsize=10, fontweight="bold", color="#e67e22",
                 bbox=dict(boxstyle="round,pad=0.3",
                           facecolor="#fef9e7", edgecolor="#e67e22", alpha=0.95),
@@ -300,8 +288,8 @@ def create_gif(output_path):
             overlay_texts.append(t2)
 
         fig.suptitle(
-            "前脚ブレーキの仕組み：踏み込み後に前膝が素早く伸びることで腰の回転軸が固定される（Driveline OBP）\n"
-            "赤 = 踏み込み脚（前脚）",
+            "Lead Leg Block (Hitting): fast knee extension after foot strike locks the hip rotation axis (Driveline OBP)\n"
+            "Red = lead leg (front leg)  |  Graph: solid = knee angle, dashed = extension velocity",
             fontsize=12, fontweight="bold", y=0.99,
         )
 
