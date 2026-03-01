@@ -2,6 +2,16 @@ name: Generate Features CSV
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Analysis mode"
+        required: true
+        default: "hitting"
+        type: choice
+        options:
+          - pitching
+          - hitting
+          - both
 
 jobs:
   generate:
@@ -23,14 +33,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/*.c3d
-          key: c3d-pitching-v1
+          key: c3d-${{ inputs.mode }}-v1
 
       - name: Generate features CSV and plots
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python statcast_correlation.py --mode pitching --download 60
-          python body_efficiency_analysis.py
+          if [ "${{ inputs.mode }}" = "pitching" ] || [ "${{ inputs.mode }}" = "both" ]; then
+            python statcast_correlation.py --mode pitching --download 60
+            python body_efficiency_analysis.py
+          fi
+          if [ "${{ inputs.mode }}" = "hitting" ] || [ "${{ inputs.mode }}" = "both" ]; then
+            python statcast_correlation.py --mode hitting --download 40
+            python body_efficiency_hitting.py
+          fi
 
       - name: Commit and push outputs
         run: |
@@ -42,7 +58,14 @@ jobs:
                   data/output/scatter_pitching.png \
                   data/output/llb_profile_pitching.png \
                   data/output/efficient_throwing_story.png \
-                  data/output/body_efficiency_breakdown.png
-          git diff --staged --quiet || git commit -m "ci: regenerate features and efficiency plots [skip ci]"
+                  data/output/body_efficiency_breakdown.png \
+                  data/output/features_hitting.csv \
+                  data/output/correlation_hitting.csv \
+                  data/output/correlation_hitting.png \
+                  data/output/scatter_hitting.png \
+                  data/output/llb_profile_hitting.png \
+                  data/output/efficient_hitting_story.png \
+                  data/output/body_efficiency_hitting_breakdown.png
+          git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode }} features and efficiency plots [skip ci]"
           git pull --rebase
           git push
