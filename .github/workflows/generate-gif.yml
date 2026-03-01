@@ -1,11 +1,23 @@
-name: Generate Efficient Thrower GIF
+name: Generate Efficiency GIFs
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Which GIF to generate"
+        required: true
+        default: "hitting"
+        type: choice
+        options:
+          - pitching
+          - hitting
+          - both
   push:
     paths:
       - "efficient_thrower_gif.py"
+      - "efficient_hitter_gif.py"
       - "body_efficiency_analysis.py"
+      - "body_efficiency_hitting.py"
 
 jobs:
   generate:
@@ -23,10 +35,65 @@ jobs:
       - name: Install dependencies
         run: pip install ezc3d numpy pandas scipy matplotlib scikit-learn pillow
 
-      - name: Generate GIF and graphs
+      - name: Download C3D files for GIF
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python efficient_thrower_gif.py
-          python body_efficiency_analysis.py
+          MODE="${{ inputs.mode || 'both' }}"
+          python - <<'EOF'
+          import os, json, urllib.request
+          from pathlib import Path
+
+          token = os.environ.get("GITHUB_TOKEN", "")
+          mode = os.environ.get("MODE", "both")
+          base = "https://github.com/drivelineresearch/openbiomechanics/raw/main"
+          raw_dir = Path("data/raw")
+          raw_dir.mkdir(parents=True, exist_ok=True)
+          headers = {"User-Agent": "baseball-cv"}
+          if token:
+              headers["Authorization"] = f"token {token}"
+
+          pitching_files = [
+              "baseball_pitching/data/c3d/003252/000870_003252_74_195_002_FF_808.c3d",
+              "baseball_pitching/data/c3d/001562/000874_001562_73_211_003_FF_918.c3d",
+          ]
+          hitting_files = [
+              "baseball_hitting/data/c3d/000123/000009_000123_63_140_R_001_746.c3d",
+              "baseball_hitting/data/c3d/000103/000004_000103_75_236_R_003_972.c3d",
+          ]
+
+          files_to_dl = []
+          if mode in ("pitching", "both"):
+              files_to_dl += pitching_files
+          if mode in ("hitting", "both"):
+              files_to_dl += hitting_files
+
+          for path in files_to_dl:
+              fname = Path(path).name
+              dest = raw_dir / fname
+              if dest.exists():
+                  print(f"  Already exists: {fname}")
+                  continue
+              url = f"{base}/{path}"
+              print(f"  Downloading: {fname}")
+              req = urllib.request.Request(url, headers=headers)
+              urllib.request.urlretrieve(url, str(dest))
+              print(f"  Done: {fname}")
+          EOF
+        env:
+          MODE: ${{ inputs.mode || 'both' }}
+
+      - name: Generate GIFs and graphs
+        run: |
+          MODE="${{ inputs.mode || 'both' }}"
+          if [ "$MODE" = "pitching" ] || [ "$MODE" = "both" ]; then
+            python efficient_thrower_gif.py
+            python body_efficiency_analysis.py
+          fi
+          if [ "$MODE" = "hitting" ] || [ "$MODE" = "both" ]; then
+            python efficient_hitter_gif.py
+            python body_efficiency_hitting.py
+          fi
 
       - name: Commit and push outputs
         run: |
@@ -34,7 +101,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/output/efficient_thrower_comparison.gif \
                   data/output/efficient_throwing_story.png \
-                  data/output/body_efficiency_breakdown.png
-          git diff --staged --quiet || git commit -m "ci: regenerate GIF and graphs [skip ci]"
+                  data/output/body_efficiency_breakdown.png \
+                  data/output/efficient_hitter_comparison.gif \
+                  data/output/efficient_hitting_story.png \
+                  data/output/body_efficiency_hitting_breakdown.png
+          git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode || 'both' }} GIF and graphs [skip ci]"
           git pull --rebase
           git push
