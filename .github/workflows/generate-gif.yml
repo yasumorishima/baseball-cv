@@ -58,8 +58,8 @@ jobs:
               "baseball_pitching/data/c3d/001562/000874_001562_73_211_003_FF_918.c3d",
           ]
           hitting_files = [
-              "baseball_hitting/data/c3d/000123/000009_000123_63_140_R_001_746.c3d",
-              "baseball_hitting/data/c3d/000103/000004_000103_75_236_R_003_972.c3d",
+              "baseball_hitting/data/c3d/000009/000009_000123_63_140_R_001_746.c3d",
+              "baseball_hitting/data/c3d/000004/000004_000103_75_236_R_003_972.c3d",
           ]
 
           files_to_dl = []
