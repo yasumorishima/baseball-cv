@@ -11,6 +11,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
 | 4 | `statcast_correlation.py` | Feature extraction from C3D: 100 biomechanical features across 60 pitchers |
 | 5 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
+| 6 | `body_efficiency_hitting.py` `efficient_hitter_gif.py` | **Efficient hitting**: 40 hitters, weight transfer drives R²+0.378, Q5 hits 20.9 mph harder with *lower* bat speed |
 
 ## Articles
 
@@ -18,6 +19,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 |-------|-------|-------|
 | 1–3 | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f) |
 | 4–5 | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132) |
+| 6 | Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity | *(coming soon)* |
 
 ## Results
 
@@ -143,6 +145,50 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 
 > 📝 [Why Two Pitchers with the Same Arm Speed Differ by 10 mph](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132))
 
+---
+
+### Step 6: Efficient Hitting — Body Mechanics Analysis
+
+40 Driveline OBP hitters analyzed. **Finding**: Bat speed alone barely predicts exit velocity (R²=0.097). Adding weight transfer (stride) alone jumps R² to 0.550 (+0.378) — the single largest factor. The top 20% of body efficiency hitters produce 20.9 mph more exit velocity despite having *lower* bat speed than the bottom 20%.
+
+**4-Component Model (R² = 0.159 → 0.599):**
+
+| Component | R² | Added | Physical Meaning |
+|-----------|-----|-------|-----------------|
+| Bat speed + height | 0.159 | baseline | Wrist linear speed at contact |
+| + Hip rotation | 0.173 | +0.014 | Trunk rotational velocity driving the swing |
+| **+ Weight transfer** | **0.550** | **+0.378** | **Stride length — forward momentum into the ball** |
+| + Lead leg block | 0.599 | +0.048 | Ankle braking creates a stable base to rotate around |
+
+> **Weight transfer dominates**: stride length adds 37.8% of explained variance in a single step. A longer, controlled stride channels the body's forward momentum into rotational power at contact.
+
+**Q5 hitters produce 20.9 mph more — with lower bat speed:**
+
+| Group | Bat speed | Exit velocity | Gap |
+|-------|-----------|--------------|-----|
+| Q1 (bottom 20%) | 9.16 m/s | 77.7 mph | — |
+| Q5 (top 20%) | **8.74 m/s** | **98.6 mph** | **+20.9 mph** |
+
+Q5 hitters actually swing *slower* — yet the ball leaves the bat 20.9 mph harder. The difference is entirely in how efficiently the body's kinetic chain delivers energy to the bat.
+
+**Story plot** (scatter colored by hip rotation speed | R² staircase | Q1–Q5 bars):
+
+![Efficient Hitting Story](data/output/efficient_hitting_story.png)
+
+**Body mechanics breakdown** (Q1 vs Q5 z-scores at virtually identical bat speed):
+
+![Body Efficiency Hitting Breakdown](data/output/body_efficiency_hitting_breakdown.png)
+
+**Skeleton animation** — Q1 (bat=7.23 m/s, 打球速度=74.6 mph, stride=0.72 m) vs Q5 (bat=7.80 m/s, 打球速度=97.2 mph, stride=0.99 m):
+
+![Efficient Hitter Comparison](data/output/efficient_hitter_comparison.gif)
+
+Red = lead leg (front foot/stride leg). Orange star = foot strike landing point. Both clips are aligned to foot strike.
+
+> **体効率スコア (Body Efficiency Score)**: Residual of exit velocity after controlling for bat speed. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter with the same bat speed would be expected to — purely from body mechanics.
+
+> **Root cause of short stride**: low ankle braking deceleration → foot fails to create a stable braking base → stride is curtailed → less forward momentum transfers into rotation at contact.
+
 ## Setup
 
 ```bash
@@ -180,9 +226,14 @@ python skeleton_analysis.py --mode hitting
 # Step 4: Feature extraction (downloads C3D files, builds features_pitching.csv)
 python statcast_correlation.py --mode pitching --download 40
 
-# Step 5: Body efficiency analysis
+# Step 5: Body efficiency analysis (pitching)
 python body_efficiency_analysis.py         # Scatter plots + R2 breakdown
 python efficient_thrower_gif.py            # Skeleton animation Q1 vs Q5
+
+# Step 6: Body efficiency analysis (hitting)
+python statcast_correlation.py --mode hitting --download 40
+python body_efficiency_hitting.py          # Scatter plots + R2 breakdown
+python efficient_hitter_gif.py             # Skeleton animation Q1 vs Q5
 ```
 
 ## Data Sources & Credits
