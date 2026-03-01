@@ -179,13 +179,13 @@ The efficiency score controls for bat speed, height, and weight together — so 
 
 ![Body Efficiency Hitting Breakdown](data/output/body_efficiency_hitting_breakdown.png)
 
-**Skeleton animation** — Q1 (bat=7.23 m/s, 打球速度=74.6 mph, stride=0.72 m) vs Q5 (bat=7.80 m/s, 打球速度=97.2 mph, stride=0.99 m):
+**Skeleton animation** — Q1 (bat=7.23 m/s, exit vel=74.6 mph, stride=0.72 m) vs Q5 (bat=7.80 m/s, exit vel=97.2 mph, stride=0.99 m):
 
 ![Efficient Hitter Comparison](data/output/efficient_hitter_comparison.gif)
 
 Red = lead leg (front foot/stride leg). Orange star = foot strike landing point. Both clips are aligned to foot strike.
 
-> **体効率スコア (Body Efficiency Score)**: Residual of exit velocity after controlling for bat speed, height, and weight together. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter of the same size and bat speed — purely from body mechanics.
+> **Body Efficiency Score**: Residual of exit velocity after controlling for bat speed, height, and weight together. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter of the same size and bat speed — purely from body mechanics.
 
 > **Root cause of short stride**: low ankle braking deceleration → foot fails to create a stable braking base → stride is curtailed → less forward momentum transfers into rotation at contact.
 
