@@ -118,7 +118,7 @@ def print_top_correlations(df, top_n=15):
 
 def plot_story(df, r2_steps, out_path):
     """3-panel: scatter colored by smoothness | R2 staircase | Q1/Q5 bars."""
-    fig = plt.figure(figsize=(18, 6))
+    fig = plt.figure(figsize=(18, 8))
 
     # Panel 1: Bat speed vs Exit velocity, colored by trunk rotation speed
     ax1 = fig.add_subplot(1, 3, 1)
@@ -126,17 +126,17 @@ def plot_story(df, r2_steps, out_path):
     d_plot = df[[BAT_SPEED, TARGET, color_col]].dropna()
     sc = ax1.scatter(
         d_plot[BAT_SPEED], d_plot[TARGET],
-        c=d_plot[color_col], cmap="RdYlGn", s=60, alpha=0.8,
+        c=d_plot[color_col], cmap="RdYlGn", s=80, alpha=0.8,
         edgecolors="gray", linewidths=0.5,
     )
     plt.colorbar(sc, ax=ax1, label=f"{color_col} (green=fast)")
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax1.plot(xline, np.polyval(z, xline), color="black", lw=2, alpha=0.4)
-    ax1.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=11)
-    ax1.set_ylabel("Exit velocity (mph)", fontsize=11)
+    ax1.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=14)
+    ax1.set_ylabel("Exit velocity (mph)", fontsize=14)
     ax1.set_title("Same bat speed → different exit velocity\n"
-                  "(green=fast hip rotation, red=slow)", fontsize=10)
+                  "(green=fast hip rotation, red=slow)", fontsize=13)
 
     # Panel 2: Incremental R2 bars
     ax2 = fig.add_subplot(1, 3, 2)
@@ -147,15 +147,15 @@ def plot_story(df, r2_steps, out_path):
     ax2.bar(range(len(r2_vals)), r2_vals, color=colors, edgecolor="white", lw=2)
     for i, r2 in enumerate(r2_vals):
         prev = r2_vals[i - 1] if i > 0 else 0
-        ax2.text(i, r2 + 0.01, f"{r2:.3f}", ha="center", fontweight="bold", fontsize=10)
+        ax2.text(i, r2 + 0.01, f"{r2:.3f}", ha="center", fontweight="bold", fontsize=13)
         if i > 0:
-            ax2.text(i, r2 - 0.04, f"+{r2 - prev:.3f}", ha="center",
-                     fontsize=8, color="white", fontweight="bold")
+            ax2.text(i, r2 - 0.05, f"+{r2 - prev:.3f}", ha="center",
+                     fontsize=11, color="white", fontweight="bold")
     ax2.set_xticks(range(len(labels_short)))
-    ax2.set_xticklabels(labels_short, fontsize=10)
-    ax2.set_ylabel("R2 (variance explained)", fontsize=11)
+    ax2.set_xticklabels(labels_short, fontsize=13)
+    ax2.set_ylabel("R2 (variance explained)", fontsize=14)
     ax2.set_ylim(0, min(max(r2_vals) + 0.15, 1.0))
-    ax2.set_title("Each body component adds\npredictive power", fontsize=10)
+    ax2.set_title("Each body component adds\npredictive power", fontsize=13)
 
     # Panel 3: Q1/Q5 exit velocity bars (with bat speed annotation)
     ax3 = fig.add_subplot(1, 3, 3)
@@ -167,25 +167,25 @@ def plot_story(df, r2_steps, out_path):
     colors_q = ["#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#27ae60"]
     ax3.bar(x, q_grp["exit_velo"], color=colors_q, edgecolor="white", lw=2)
     for i, (ev, bat) in enumerate(zip(q_grp["exit_velo"], q_grp["bat_speed"])):
-        ax3.text(i, ev + 0.3, f"{ev:.1f}", ha="center", fontweight="bold", fontsize=10)
-        ax3.text(i, ev - 3.5, f"bat\n{bat:.1f}", ha="center", fontsize=8, color="white")
+        ax3.text(i, ev + 0.3, f"{ev:.1f}", ha="center", fontweight="bold", fontsize=13)
+        ax3.text(i, ev - 3.5, f"bat\n{bat:.1f}", ha="center", fontsize=11, color="white")
     ax3.set_xticks(x)
-    ax3.set_xticklabels(["Q1\n(worst)", "Q2", "Q3", "Q4", "Q5\n(best)"], fontsize=10)
-    ax3.set_ylabel("Mean exit velocity (mph)", fontsize=11)
+    ax3.set_xticklabels(["Q1\n(worst)", "Q2", "Q3", "Q4", "Q5\n(best)"], fontsize=13)
+    ax3.set_ylabel("Mean exit velocity (mph)", fontsize=14)
     q1_ev = q_grp[q_grp["eff_q"] == "Q1"]["exit_velo"].values[0] if "Q1" in q_grp["eff_q"].values else 80
     q5_ev = q_grp[q_grp["eff_q"] == "Q5"]["exit_velo"].values[0] if "Q5" in q_grp["eff_q"].values else 95
     ax3.set_ylim(max(q1_ev - 10, 60), q5_ev + 5)
     ax3.set_title(f"Same bat speed, different body use\n"
-                  f"(Q1={q1_ev:.1f} mph vs Q5={q5_ev:.1f} mph)", fontsize=10)
+                  f"(Q1={q1_ev:.1f} mph vs Q5={q5_ev:.1f} mph)", fontsize=13)
 
     n_total = len(df.dropna(subset=[TARGET]))
     r2_max = r2_vals[-1] if r2_vals else 0
     fig.suptitle(
         f"Efficient Hitting: Body Mechanics Beyond Bat Speed (n={n_total}, R2={r2_max:.3f})",
-        fontsize=13, fontweight="bold", y=1.02,
+        fontsize=16, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
-    fig.savefig(str(out_path), dpi=150, bbox_inches="tight")
+    fig.savefig(str(out_path), dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out_path}")
 
@@ -219,7 +219,7 @@ def plot_breakdown(df, out_path):
     q1_z = ((q1 - means) / stds).values * flip
     q5_z = ((q5 - means) / stds).values * flip
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
 
     x = np.arange(len(body_labels))
     w = 0.35
@@ -234,41 +234,41 @@ def plot_breakdown(df, out_path):
     ax1.bar(x + w / 2, q5_z, w, label=f"Q5 (Best body, {q5_ev:.1f} mph exit)",
             color="#27ae60", alpha=0.8, edgecolor="white")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(body_labels, fontsize=11)
+    ax1.set_xticklabels(body_labels, fontsize=13)
     ax1.axhline(0, color="black", lw=1, ls="--", alpha=0.5)
-    ax1.set_ylabel("Z-score (positive = more efficient)", fontsize=11)
+    ax1.set_ylabel("Z-score (positive = more efficient)", fontsize=14)
     ax1.set_title(
         f"Body Mechanics: Similar bat speed ({q1_bat:.1f} vs {q5_bat:.1f} m/s)\n"
         f"--> {q5_ev - q1_ev:.1f} mph exit velocity gap",
-        fontsize=11,
+        fontsize=13,
     )
-    ax1.legend(fontsize=10)
+    ax1.legend(fontsize=12)
     for xi, (z1, z5) in enumerate(zip(q1_z, q5_z)):
         for val, offset in [(z1, -w / 2), (z5, +w / 2)]:
             y_text = val + 0.05 if val >= 0 else (val - 0.13 if val > -0.45 else val + 0.12)
-            ax1.text(xi + offset, y_text, f"{val:+.2f}", ha="center", fontsize=9)
+            ax1.text(xi + offset, y_text, f"{val:+.2f}", ha="center", fontsize=12)
 
     d_plot = df[[BAT_SPEED, TARGET, "eff_q"]].dropna()
     cmap = {"Q1": "#e74c3c", "Q2": "#e67e22", "Q3": "#f1c40f",
             "Q4": "#2ecc71", "Q5": "#27ae60"}
     for q in ["Q2", "Q3", "Q4"]:
         d_q = d_plot[d_plot["eff_q"] == q]
-        ax2.scatter(d_q[BAT_SPEED], d_q[TARGET], c=cmap[q], s=40, alpha=0.6)
+        ax2.scatter(d_q[BAT_SPEED], d_q[TARGET], c=cmap[q], s=50, alpha=0.6)
     for q in ["Q1", "Q5"]:
         d_q = d_plot[d_plot["eff_q"] == q]
         ev = d_q[TARGET].mean()
         bat = d_q[BAT_SPEED].mean()
         ax2.scatter(d_q[BAT_SPEED], d_q[TARGET],
-                    c=cmap[q], s=80, label=f"{q}: {ev:.1f} mph (bat={bat:.1f})",
+                    c=cmap[q], s=100, label=f"{q}: {ev:.1f} mph (bat={bat:.1f})",
                     edgecolors="black", linewidths=1.5, zorder=5)
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax2.plot(xline, np.polyval(z, xline), "k--", lw=2, alpha=0.4)
-    ax2.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=11)
-    ax2.set_ylabel("Exit velocity (mph)", fontsize=11)
+    ax2.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=14)
+    ax2.set_ylabel("Exit velocity (mph)", fontsize=14)
     ax2.set_title('"Efficient hitting" exists\n'
-                  "(same bat speed -> exit velocity range)", fontsize=11)
-    ax2.legend(fontsize=9, loc="upper left")
+                  "(same bat speed -> exit velocity range)", fontsize=13)
+    ax2.legend(fontsize=12, loc="upper left")
 
     r2_delta = 0
     if len(CANDIDATE_STEPS) >= 2:
@@ -285,10 +285,10 @@ def plot_breakdown(df, out_path):
 
     fig.suptitle(
         f"Efficient Hitting: Body Mechanics Explain {r2_delta * 100:.1f}% Additional Variance Beyond Bat Speed",
-        fontsize=12, fontweight="bold", y=1.02,
+        fontsize=15, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
-    fig.savefig(str(out_path), dpi=150, bbox_inches="tight")
+    fig.savefig(str(out_path), dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out_path}")
 

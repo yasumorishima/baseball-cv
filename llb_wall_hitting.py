@@ -290,27 +290,9 @@ def create_gif(output_path):
                 )
                 overlay_texts.append(t)
 
-        if is_post:
-            t = fig.text(
-                0.53, 0.31,
-                "Hip stops forward\n-> WALL -> rotation!",
-                fontsize=10, fontweight="bold", color="#2980b9",
-                bbox=dict(boxstyle="round,pad=0.3",
-                          facecolor="#eaf4fb", edgecolor="#2980b9", alpha=0.95),
-            )
-            overlay_texts.append(t)
-            t2 = fig.text(
-                0.03, 0.31,
-                "Hip drifts forward\n-> no wall -> drift",
-                fontsize=10, fontweight="bold", color="#e67e22",
-                bbox=dict(boxstyle="round,pad=0.3",
-                          facecolor="#fef9e7", edgecolor="#e67e22", alpha=0.95),
-            )
-            overlay_texts.append(t2)
-
         fig.suptitle(
-            "The Wall: front ankle plants, hip stops going forward and rotates around it (Driveline OBP)\n"
-            "Red = lead leg  |  Graph: hip-ankle gap in forward direction — stable after FS = wall created",
+            "The Wall: hip-ankle gap in forward direction after foot strike (Driveline OBP)\n"
+            "Red = lead leg  |  Stable gap after foot strike = wall created",
             fontsize=12, fontweight="bold", y=0.99,
         )
 

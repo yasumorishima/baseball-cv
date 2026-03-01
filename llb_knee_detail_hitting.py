@@ -232,32 +232,10 @@ def create_gif(output_path):
         fi1 = idx1[frame_num]
         fi5 = idx5[frame_num]
         is_fs = abs(frame_num - fs_gif) <= 1
-        is_post = frame_num > fs_gif + 3
 
         draw_skeleton(ax_q1, labels1, pts1, fi1, bnd1, Q1_META, is_fs)
         draw_skeleton(ax_q5, labels5, pts5, fi5, bnd5, Q5_META, is_fs)
         draw_graph(ax_g, common_time, knee1_i, knee5_i, vel1_i, vel5_i, frame_num)
-
-        for ax_pos, kang, kvel, meta in [
-            (0.03, knee1_i[frame_num], vel1_i[frame_num], Q1_META),
-            (0.53, knee5_i[frame_num], vel5_i[frame_num], Q5_META),
-        ]:
-            t = fig.text(
-                ax_pos, 0.56, f"Knee: {kang:.0f}°",
-                fontsize=14, fontweight="bold", color="#2c3e50",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#2c3e50", alpha=0.95),
-            )
-            overlay_texts.append(t)
-            vc = "#27ae60" if kvel > 0 else "#c0392b"
-            vl = "extending" if kvel > 0 else "flexing"
-            t2 = fig.text(
-                ax_pos, 0.52, f"{abs(kvel):.0f} deg/s {vl}",
-                fontsize=12, fontweight="bold", color=vc,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor=vc, alpha=0.95),
-            )
-            overlay_texts.append(t2)
 
         if is_fs:
             for xpos in (0.23, 0.71):
@@ -269,27 +247,9 @@ def create_gif(output_path):
                 )
                 overlay_texts.append(t)
 
-        if is_post:
-            t = fig.text(
-                0.35, 0.29,
-                "Knee extends fast\n-> hip axis locked ->",
-                fontsize=10, fontweight="bold", color="#2980b9",
-                bbox=dict(boxstyle="round,pad=0.3",
-                          facecolor="#eaf4fb", edgecolor="#2980b9", alpha=0.95),
-            )
-            overlay_texts.append(t)
-            t2 = fig.text(
-                0.78, 0.29,
-                "Knee stays bent\n-> body leaks forward ->",
-                fontsize=10, fontweight="bold", color="#e67e22",
-                bbox=dict(boxstyle="round,pad=0.3",
-                          facecolor="#fef9e7", edgecolor="#e67e22", alpha=0.95),
-            )
-            overlay_texts.append(t2)
-
         fig.suptitle(
-            "Lead Leg Block (Hitting): fast knee extension after foot strike locks the hip rotation axis (Driveline OBP)\n"
-            "Red = lead leg (front leg)  |  Graph: solid = knee angle, dashed = extension velocity",
+            "Lead Leg Block (Hitting): knee extension speed after foot strike (Driveline OBP)\n"
+            "Red = lead leg  |  Solid = knee angle  |  Dashed = extension velocity",
             fontsize=12, fontweight="bold", y=0.99,
         )
 
