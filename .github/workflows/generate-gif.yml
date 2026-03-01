@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install ezc3d numpy pandas scipy matplotlib scikit-learn pillow
+        run: pip install ezc3d numpy pandas scipy matplotlib scikit-learn pillow japanize-matplotlib
 
       - name: Download C3D files for GIF
         env:
