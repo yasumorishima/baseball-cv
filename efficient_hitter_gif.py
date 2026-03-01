@@ -25,10 +25,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
-try:
-    import japanize_matplotlib  # noqa: F401
-except ImportError:
-    pass
+import matplotlib.font_manager as _fm
+_jp_fonts = [f.name for f in _fm.fontManager.ttflist if "Noto" in f.name and "CJK" in f.name]
+if _jp_fonts:
+    plt.rcParams["font.family"] = _jp_fonts[0]
 
 from skeleton_c3d import BODY_CONNECTIONS, get_marker_index
 

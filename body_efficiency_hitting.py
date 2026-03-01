@@ -25,10 +25,10 @@ import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-try:
-    import japanize_matplotlib  # noqa: F401
-except ImportError:
-    pass
+import matplotlib.font_manager as _fm
+_jp_fonts = [f.name for f in _fm.fontManager.ttflist if "Noto" in f.name and "CJK" in f.name]
+if _jp_fonts:
+    plt.rcParams["font.family"] = _jp_fonts[0]
 
 OUTPUT_DIR = Path("data/output")
 FEATURES_CSV = OUTPUT_DIR / "features_hitting.csv"

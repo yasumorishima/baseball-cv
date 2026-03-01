@@ -187,6 +187,8 @@ Red = lead leg (front foot/stride leg). Orange star = foot strike landing point.
 
 > **体効率スコア (Body Efficiency Score)**: Residual of exit velocity after controlling for bat speed. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter with the same bat speed would be expected to — purely from body mechanics.
 
+> **Body size caveat**: Q5 hitters average 6.3 cm taller and 11.2 kg heavier than Q1 hitters (BMI +1.7). Height is included as a control variable in the incremental R² model, but weight is not. Part of the Q1/Q5 exit velocity gap may reflect body size in addition to mechanics. The efficiency score itself only controls for bat speed, not size.
+
 > **Root cause of short stride**: low ankle braking deceleration → foot fails to create a stable braking base → stride is curtailed → less forward momentum transfers into rotation at contact.
 
 ## Setup
