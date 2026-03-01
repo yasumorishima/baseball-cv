@@ -20,6 +20,7 @@ on:
       - "body_efficiency_hitting.py"
       - "llb_knee_detail_hitting.py"
       - "llb_wall_hitting.py"
+      - "llb_brace_analysis.py"
 
 concurrency:
   group: generate-gifs
