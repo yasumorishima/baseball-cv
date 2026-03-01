@@ -18,6 +18,12 @@ on:
       - "efficient_hitter_gif.py"
       - "body_efficiency_analysis.py"
       - "body_efficiency_hitting.py"
+      - "llb_knee_detail_hitting.py"
+      - "llb_wall_hitting.py"
+
+concurrency:
+  group: generate-gifs
+  cancel-in-progress: true
 
 jobs:
   generate:
@@ -92,6 +98,7 @@ jobs:
             python efficient_hitter_gif.py
             python body_efficiency_hitting.py
             python llb_knee_detail_hitting.py
+            python llb_wall_hitting.py
           fi
 
       - name: Commit and push outputs
@@ -104,7 +111,8 @@ jobs:
                   data/output/efficient_hitter_comparison.gif \
                   data/output/efficient_hitting_story.png \
                   data/output/body_efficiency_hitting_breakdown.png \
-                  data/output/llb_knee_detail_hitting.gif
+                  data/output/llb_knee_detail_hitting.gif \
+                  data/output/llb_wall_hitting.gif
           git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode || 'both' }} GIF and graphs [skip ci]"
           git pull --rebase
           git push
