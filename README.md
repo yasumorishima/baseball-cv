@@ -11,7 +11,7 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 | 3 | `skeleton_analysis.py` | Joint angle & angular velocity extraction from C3D data |
 | 4 | `statcast_correlation.py` | Feature extraction from C3D: 100 biomechanical features across 60 pitchers |
 | 5 | `body_efficiency_analysis.py` `efficient_thrower_gif.py` | **Efficient throwing**: 5-component model (R²=0.491→0.669), same arm speed → 10 mph gap |
-| 6 | `body_efficiency_hitting.py` `efficient_hitter_gif.py` | **Efficient hitting**: 40 hitters, weight transfer drives R²+0.378, Q5 hits 20.9 mph harder with *lower* bat speed |
+| 6 | `body_efficiency_hitting.py` `efficient_hitter_gif.py` | **Efficient hitting**: 40 hitters, weight transfer drives R²+0.378, Q5 hits 18.6 mph harder at similar bat speed and *smaller* body size |
 
 ## Articles
 
@@ -162,14 +162,14 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 
 > **Weight transfer dominates**: stride length adds 37.8% of explained variance in a single step. A longer, controlled stride channels the body's forward momentum into rotational power at contact.
 
-**Q5 hitters produce 20.9 mph more — with lower bat speed:**
+**Q5 hitters produce 18.6 mph more — at similar bat speed and body size:**
 
-| Group | Bat speed | Exit velocity | Gap |
-|-------|-----------|--------------|-----|
-| Q1 (bottom 20%) | 9.16 m/s | 77.7 mph | — |
-| Q5 (top 20%) | **8.74 m/s** | **98.6 mph** | **+20.9 mph** |
+| Group | Bat speed | Height | Weight | Exit velocity | Gap |
+|-------|-----------|--------|--------|--------------|-----|
+| Q1 (bottom 20%) | 9.42 m/s | 70.8 in | 196.0 lb | 79.8 mph | — |
+| Q5 (top 20%) | 9.04 m/s | **69.9 in** | **191.9 lb** | **98.4 mph** | **+18.6 mph** |
 
-Q5 hitters actually swing *slower* — yet the ball leaves the bat 20.9 mph harder. The difference is entirely in how efficiently the body's kinetic chain delivers energy to the bat.
+The efficiency score controls for bat speed, height, and weight together — so Q1/Q5 groups are matched on physique. Q5 hitters are actually *shorter and lighter* yet produce 18.6 mph more exit velocity. The gap is mechanics, not size.
 
 **Story plot** (scatter colored by hip rotation speed | R² staircase | Q1–Q5 bars):
 
@@ -185,9 +185,7 @@ Q5 hitters actually swing *slower* — yet the ball leaves the bat 20.9 mph hard
 
 Red = lead leg (front foot/stride leg). Orange star = foot strike landing point. Both clips are aligned to foot strike.
 
-> **体効率スコア (Body Efficiency Score)**: Residual of exit velocity after controlling for bat speed. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter with the same bat speed would be expected to — purely from body mechanics.
-
-> **Body size caveat**: Q5 hitters average 6.3 cm taller and 11.2 kg heavier than Q1 hitters (BMI +1.7). Height is included as a control variable in the incremental R² model, but weight is not. Part of the Q1/Q5 exit velocity gap may reflect body size in addition to mechanics. The efficiency score itself only controls for bat speed, not size.
+> **体効率スコア (Body Efficiency Score)**: Residual of exit velocity after controlling for bat speed, height, and weight together. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter of the same size and bat speed — purely from body mechanics.
 
 > **Root cause of short stride**: low ankle braking deceleration → foot fails to create a stable braking base → stride is curtailed → less forward momentum transfers into rotation at contact.
 

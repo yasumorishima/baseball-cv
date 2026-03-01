@@ -56,14 +56,19 @@ CANDIDATE_STEPS = [
 
 
 def compute_body_efficiency(df):
-    """Residual of exit_velocity after regressing on bat speed alone."""
-    d = df[[BAT_SPEED, TARGET]].dropna().copy()
+    """Residual of exit_velocity after regressing on bat speed + height + weight.
+
+    Controlling for body size ensures Q1/Q5 groups differ in mechanics, not physique.
+    """
+    size_cols = [c for c in ["height_in", "weight_lb"] if c in df.columns]
+    baseline_cols = [BAT_SPEED] + size_cols
+    d = df[baseline_cols + [TARGET]].dropna().copy()
     if len(d) < 10:
-        raise ValueError(f"Too few samples with both {BAT_SPEED} and {TARGET}: {len(d)}")
-    lm = LinearRegression().fit(d[[BAT_SPEED]], d[TARGET])
+        raise ValueError(f"Too few samples: {len(d)}")
+    lm = LinearRegression().fit(d[baseline_cols], d[TARGET])
     df = df.copy()
     df.loc[d.index, "body_efficiency"] = (
-        d[TARGET].values - lm.predict(d[[BAT_SPEED]].values)
+        d[TARGET].values - lm.predict(d[baseline_cols].values)
     )
     df["eff_q"] = pd.qcut(df["body_efficiency"], q=5,
                           labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
