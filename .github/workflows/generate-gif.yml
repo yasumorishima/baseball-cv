@@ -38,8 +38,8 @@ jobs:
       - name: Download C3D files for GIF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODE: ${{ inputs.mode || 'both' }}
         run: |
-          MODE="${{ inputs.mode || 'both' }}"
           python - <<'EOF'
           import os, json, urllib.request
           from pathlib import Path
@@ -80,8 +80,6 @@ jobs:
               urllib.request.urlretrieve(url, str(dest))
               print(f"  Done: {fname}")
           EOF
-        env:
-          MODE: ${{ inputs.mode || 'both' }}
 
       - name: Generate GIFs and graphs
         run: |
