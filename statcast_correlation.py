@@ -69,15 +69,18 @@ def parse_hitting_filename(filename):
     parts = Path(filename).stem.split("_")
     if len(parts) < 7:
         return None
-    return {
-        "user_id": parts[0],
-        "session_id": parts[1],
-        "height_in": int(parts[2]),
-        "weight_lb": int(parts[3]),
-        "side": parts[4],
-        "swing_number": int(parts[5]),
-        "exit_velocity_mph": int(parts[6]) / 10.0,
-    }
+    try:
+        return {
+            "user_id": parts[0],
+            "session_id": parts[1],
+            "height_in": int(parts[2]),
+            "weight_lb": int(parts[3]),
+            "side": parts[4],
+            "swing_number": int(parts[5]),
+            "exit_velocity_mph": int(parts[6]) / 10.0,
+        }
+    except ValueError:
+        return None
 
 
 def extract_peak_features(markers, rate, mode="pitching"):
