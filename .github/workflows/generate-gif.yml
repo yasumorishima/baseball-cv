@@ -96,6 +96,7 @@ jobs:
           if [ "$MODE" = "hitting" ] || [ "$MODE" = "both" ]; then
             python efficient_hitter_gif.py
             python body_efficiency_hitting.py
+            python llb_knee_detail_hitting.py
           fi
 
       - name: Commit and push outputs
@@ -107,7 +108,8 @@ jobs:
                   data/output/body_efficiency_breakdown.png \
                   data/output/efficient_hitter_comparison.gif \
                   data/output/efficient_hitting_story.png \
-                  data/output/body_efficiency_hitting_breakdown.png
+                  data/output/body_efficiency_hitting_breakdown.png \
+                  data/output/llb_knee_detail_hitting.gif
           git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode || 'both' }} GIF and graphs [skip ci]"
           git pull --rebase
           git push
