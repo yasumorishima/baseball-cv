@@ -99,6 +99,7 @@ jobs:
             python body_efficiency_hitting.py
             python llb_knee_detail_hitting.py
             python llb_wall_hitting.py
+            python llb_brace_analysis.py
           fi
 
       - name: Commit and push outputs
@@ -112,7 +113,8 @@ jobs:
                   data/output/efficient_hitting_story.png \
                   data/output/body_efficiency_hitting_breakdown.png \
                   data/output/llb_knee_detail_hitting.gif \
-                  data/output/llb_wall_hitting.gif
+                  data/output/llb_wall_hitting.gif \
+                  data/output/llb_brace_hitting.png
           git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode || 'both' }} GIF and graphs [skip ci]"
           git pull --rebase
           git push
