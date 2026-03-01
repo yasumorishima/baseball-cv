@@ -97,13 +97,13 @@ def plot_brace(df, out_path):
     # --- Panel 2: Time to peak extension + peak velocity bars ---
     ax2 = axes[1]
     metrics = {
-        "Time to peak\nextension (s)\nlower = faster brace": (
+        "Time to peak\nextension (s)\n↓ lower = faster": (
             "llb_time_to_peak_extension", -1, "s"
         ),
-        "Peak knee ext\nvelocity (deg/s)\nhigher = stronger brace": (
+        "Peak knee ext\nvelocity (deg/s)\n↑ higher = stronger": (
             "llb_knee_ext_peak_velocity", +1, "deg/s"
         ),
-        "Knee forward\ndecel (m/s²)\nhigher = sharper stop": (
+        "Knee forward\ndecel (m/s²)\n↑ higher = sharper": (
             "llb_knee_forward_decel", +1, "m/s²"
         ),
     }
@@ -136,7 +136,7 @@ def plot_brace(df, out_path):
     ax2.set_title("Brace quality metrics\nQ5 braces faster and stronger", fontsize=14)
     ax2.legend(fontsize=12)
     ax2.grid(True, alpha=0.3, axis="y")
-    ax2.set_ylabel("Value (sign adjusted: higher = better brace)", fontsize=12)
+    ax2.set_ylabel("Value (sign-flipped so higher = better brace)", fontsize=11)
 
     # --- Panel 3: Scatter stride vs time_to_peak_extension, colored by exit vel ---
     ax3 = axes[2]
