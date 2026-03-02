@@ -114,13 +114,9 @@ def draw_skeleton(ax, labels, points, fi, bnd, meta, is_fs):
     ax.view_init(elev=15, azim=50)
 
     fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
-    eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
-        f"{meta['label']}{fs_tag}\n"
-        f"exit {meta['exit_velocity_mph']:.1f} mph  |  "
-        f"stride {meta['stride_m']:.2f} m  |  "
-        f"body eff {eff_sign}{meta['body_efficiency']:.2f} mph",
-        fontsize=10, fontweight="bold", color=meta["color"],
+        f"{meta['label']} ({meta['exit_velocity_mph']:.0f} mph){fs_tag}",
+        fontsize=14, fontweight="bold", color=meta["color"],
     )
 
 
@@ -137,8 +133,8 @@ def draw_graph(ax, common_time, knee_q1, knee_q5, vel_q1, vel_q5, frame_num):
              linestyle="--", alpha=0.7)
     ax2.plot(common_time, vel_q5, color=Q5_META["color"], linewidth=1.5,
              linestyle="--", alpha=0.7)
-    ax2.set_ylabel("Knee extension velocity (deg/s)\n+ extending  - flexing",
-                   fontsize=9, color="gray")
+    ax2.set_ylabel("Extension velocity (deg/s)",
+                   fontsize=14, color="gray")
     ax2.tick_params(axis="y", labelcolor="gray")
     ax2.axhline(0, color="gray", linewidth=0.5, alpha=0.4)
 
@@ -151,17 +147,10 @@ def draw_graph(ax, common_time, knee_q1, knee_q5, vel_q1, vel_q5, frame_num):
     ax.scatter(t_now, knee_q5[frame_num], s=180, c=Q5_META["color"],
                zorder=6, edgecolors="black", linewidths=2)
 
-    ax.set_xlabel(
-        "<-- before foot strike   |   Time (s)   |   after foot strike -->",
-        fontsize=11, fontweight="bold",
-    )
-    ax.set_ylabel("Lead knee angle (deg)\nsmaller = more bent", fontsize=10)
-    ax.set_title(
-        "Q5: knee bends at foot strike then extends rapidly -> fixes hip rotation axis -> higher exit velocity\n"
-        "Solid line = knee angle   Dashed line = extension velocity",
-        fontsize=10, fontweight="bold",
-    )
-    ax.legend(loc="upper left", fontsize=9, framealpha=0.9)
+    ax.set_xlabel("Time (s)", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Knee angle (deg)", fontsize=14)
+    ax.set_title("Knee Angle & Extension Speed", fontsize=16, fontweight="bold")
+    ax.legend(loc="upper left", fontsize=12, framealpha=0.9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(common_time[0] - 0.01, common_time[-1] + 0.01)
 
@@ -248,9 +237,8 @@ def create_gif(output_path):
                 overlay_texts.append(t)
 
         fig.suptitle(
-            "Lead Leg Block (Hitting): knee extension speed after foot strike (Driveline OBP)\n"
-            "Red = lead leg  |  Solid = knee angle  |  Dashed = extension velocity",
-            fontsize=12, fontweight="bold", y=0.99,
+            "Lead Leg Block: Knee Extension (Driveline OBP)",
+            fontsize=18, fontweight="bold", y=0.99,
         )
 
     print(f"  Rendering {n_anim} frames...")

@@ -808,7 +808,7 @@ def analyze(filepath, mode="pitching"):
 def plot_kinematic_sequence(df, time, mode, output_dir):
     """Plot kinematic sequence: joint angles over time."""
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig.suptitle(f"Kinematic Sequence — {mode.title()}", fontsize=14)
+    fig.suptitle(f"Kinematic Sequence — {mode.title()}", fontsize=18, fontweight="bold")
 
     angle_cols = [c for c in df.columns if c not in ("frame", "time_s")]
 
@@ -816,38 +816,38 @@ def plot_kinematic_sequence(df, time, mode, output_dir):
     ax = axes[0, 0]
     for col in [c for c in angle_cols if "elbow" in c]:
         ax.plot(time, df[col], label=col.replace("_", " ").title())
-    ax.set_ylabel("Angle (deg)")
-    ax.set_title("Elbow Flexion")
-    ax.legend(fontsize=8)
+    ax.set_ylabel("Angle (deg)", fontsize=14)
+    ax.set_title("Elbow Flexion", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3)
 
     # Shoulder abduction
     ax = axes[0, 1]
     for col in [c for c in angle_cols if "shoulder" in c]:
         ax.plot(time, df[col], label=col.replace("_", " ").title())
-    ax.set_ylabel("Angle (deg)")
-    ax.set_title("Shoulder Abduction")
-    ax.legend(fontsize=8)
+    ax.set_ylabel("Angle (deg)", fontsize=14)
+    ax.set_title("Shoulder Abduction", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3)
 
     # Trunk rotation
     ax = axes[1, 0]
     if "trunk_rotation" in df.columns:
         ax.plot(time, df["trunk_rotation"], label="Trunk Rotation", color="#e74c3c")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Angle (deg)")
-    ax.set_title("Trunk Rotation")
-    ax.legend(fontsize=8)
+    ax.set_xlabel("Time (s)", fontsize=14)
+    ax.set_ylabel("Angle (deg)", fontsize=14)
+    ax.set_title("Trunk Rotation", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3)
 
     # Knee flexion
     ax = axes[1, 1]
     for col in [c for c in angle_cols if "knee" in c]:
         ax.plot(time, df[col], label=col.replace("_", " ").title())
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Angle (deg)")
-    ax.set_title("Knee Flexion")
-    ax.legend(fontsize=8)
+    ax.set_xlabel("Time (s)", fontsize=14)
+    ax.set_ylabel("Angle (deg)", fontsize=14)
+    ax.set_title("Knee Flexion", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
@@ -867,10 +867,10 @@ def plot_angular_velocity(df, rate, mode, output_dir):
         vel = compute_angular_velocity(df[col].values, rate)
         ax.plot(time, vel, label=col.replace("_", " ").title(), alpha=0.8)
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Angular Velocity (deg/s)")
-    ax.set_title(f"Angular Velocities — {mode.title()}")
-    ax.legend(fontsize=8, loc="upper right")
+    ax.set_xlabel("Time (s)", fontsize=14)
+    ax.set_ylabel("Angular Velocity (deg/s)", fontsize=14)
+    ax.set_title(f"Angular Velocities — {mode.title()}", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12, loc="upper right")
     ax.grid(True, alpha=0.3)
 
     path = output_dir / f"angular_velocity_{mode}.png"

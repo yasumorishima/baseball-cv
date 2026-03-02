@@ -42,10 +42,18 @@ jobs:
           if [ "${{ inputs.mode }}" = "pitching" ] || [ "${{ inputs.mode }}" = "both" ]; then
             python statcast_correlation.py --mode pitching --download 60
             python body_efficiency_analysis.py
+            FIRST_PITCH=$(ls data/raw/*_FF_*.c3d 2>/dev/null | head -1)
+            if [ -n "$FIRST_PITCH" ]; then
+              python skeleton_analysis.py --input "$FIRST_PITCH" --mode pitching
+            fi
           fi
           if [ "${{ inputs.mode }}" = "hitting" ] || [ "${{ inputs.mode }}" = "both" ]; then
             python statcast_correlation.py --mode hitting --download 40
             python body_efficiency_hitting.py
+            FIRST_HIT=$(ls data/raw/*_R_*.c3d 2>/dev/null | head -1)
+            if [ -n "$FIRST_HIT" ]; then
+              python skeleton_analysis.py --input "$FIRST_HIT" --mode hitting
+            fi
           fi
 
       - name: Commit and push outputs
@@ -59,13 +67,17 @@ jobs:
                   data/output/llb_profile_pitching.png \
                   data/output/efficient_throwing_story.png \
                   data/output/body_efficiency_breakdown.png \
+                  data/output/kinematic_sequence_pitching.png \
+                  data/output/angular_velocity_pitching.png \
                   data/output/features_hitting.csv \
                   data/output/correlation_hitting.csv \
                   data/output/correlation_hitting.png \
                   data/output/scatter_hitting.png \
                   data/output/llb_profile_hitting.png \
                   data/output/efficient_hitting_story.png \
-                  data/output/body_efficiency_hitting_breakdown.png
+                  data/output/body_efficiency_hitting_breakdown.png \
+                  data/output/kinematic_sequence_hitting.png \
+                  data/output/angular_velocity_hitting.png
           git diff --staged --quiet || git commit -m "ci: regenerate ${{ inputs.mode }} features and efficiency plots [skip ci]"
           git pull --rebase
           git push

@@ -294,19 +294,20 @@ def plot_correlation_matrix(df, mode, output_dir):
     ax.set_xticks(range(len(corr_df.columns)))
     ax.set_yticks(range(len(corr_df.columns)))
     labels = [c.replace("_", "\n") for c in corr_df.columns]
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
-    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
+    ax.set_yticklabels(labels, fontsize=9)
 
     # Add correlation values
     for i in range(len(corr_df)):
         for j in range(len(corr_df)):
             val = corr_df.iloc[i, j]
             if not np.isnan(val):
-                ax.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=7,
+                ax.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=8,
                         color="white" if abs(val) > 0.5 else "black")
 
     plt.colorbar(im, ax=ax, label="Correlation")
-    ax.set_title(f"Skeleton Features × {'Pitch Speed' if mode == 'pitching' else 'Exit Velocity'} Correlation")
+    ax.set_title(f"Skeleton Features × {'Pitch Speed' if mode == 'pitching' else 'Exit Velocity'}",
+                 fontsize=16, fontweight="bold")
     plt.tight_layout()
 
     path = output_dir / f"correlation_{mode}.png"
@@ -372,16 +373,15 @@ def plot_scatter(df, mode, output_dir):
         x_line = np.linspace(x.min(), x.max(), 50)
         ax.plot(x_line, slope * x_line + intercept, "r--", alpha=0.7, linewidth=2)
 
-        ax.set_xlabel(label, fontsize=11)
-        ax.set_ylabel(arm_label, fontsize=10)
+        ax.set_xlabel(label, fontsize=14)
+        ax.set_ylabel(arm_label, fontsize=12)
         sig = "*" if p_val < 0.05 else ""
-        ax.set_title(f"r={r_val:+.3f}{sig}  (n={len(valid)})", fontsize=12,
+        ax.set_title(f"r={r_val:+.3f}{sig}  (n={len(valid)})", fontsize=14,
                      fontweight="bold")
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Body Mechanics \u2192 Arm Speed\n"
-                 "What drives faster elbow action? \u2014 Driveline OBP",
-                 fontsize=14, fontweight="bold")
+    fig.suptitle("Body Mechanics \u2192 Arm Speed (Driveline OBP)",
+                 fontsize=18, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.93])
 
     path = output_dir / f"scatter_{mode}.png"
@@ -443,16 +443,15 @@ def plot_lead_leg_block_profile(df, mode, output_dir):
         ax.plot(x_line, slope * x_line + intercept, "--", color=color,
                 alpha=0.8, linewidth=2)
 
-        ax.set_xlabel(xl, fontsize=11, fontweight="bold")
-        ax.set_ylabel(arm_label, fontsize=10)
+        ax.set_xlabel(xl, fontsize=14, fontweight="bold")
+        ax.set_ylabel(arm_label, fontsize=12)
         sig = "***" if p_val < 0.001 else "**" if p_val < 0.01 else "*" if p_val < 0.05 else ""
-        ax.set_title(f"{title}\nr={r_val:+.3f}{sig}  (n={len(valid)})",
-                     fontsize=12, fontweight="bold")
+        ax.set_title(f"{title} (r={r_val:+.3f}{sig})",
+                     fontsize=14, fontweight="bold")
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Lead Leg Block \u2192 Arm Speed: Hypothesis vs Reality\n"
-                 "Braking metrics are weak \u2014 stride & trunk timing matter more",
-                 fontsize=14, fontweight="bold")
+    fig.suptitle("Lead Leg Block \u2192 Arm Speed (Driveline OBP)",
+                 fontsize=18, fontweight="bold")
     plt.tight_layout(rect=[0, 0, 1, 0.90])
 
     path = output_dir / f"llb_profile_{mode}.png"

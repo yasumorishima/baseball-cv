@@ -45,14 +45,14 @@ Q1_META = {
     "exit_velocity_mph": 74.6, "bat_speed": 7.23,
     "stride_m": 0.718, "body_efficiency": -11.88,
     "llb_foot_strike_frame": 374,
-    "label": "Q1: No Wall — Hip Drifts Forward",
+    "label": "Q1: No Wall",
     "color": "#e67e22",
 }
 Q5_META = {
     "exit_velocity_mph": 97.2, "bat_speed": 7.80,
     "stride_m": 0.993, "body_efficiency": +9.70,
     "llb_foot_strike_frame": 574,
-    "label": "Q5: Wall Created — Hip Rotates",
+    "label": "Q5: Wall Created",
     "color": "#2980b9",
 }
 
@@ -142,13 +142,9 @@ def draw_skeleton(ax, labels, points, fi, bnd, meta, is_fs):
     ax.view_init(elev=10, azim=90)  # side view: look along X, see YZ plane
 
     fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
-    eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
-        f"{meta['label']}{fs_tag}\n"
-        f"exit {meta['exit_velocity_mph']:.1f} mph  |  "
-        f"stride {meta['stride_m']:.2f} m  |  "
-        f"body eff {eff_sign}{meta['body_efficiency']:.2f} mph",
-        fontsize=10, fontweight="bold", color=meta["color"],
+        f"{meta['label']} ({meta['exit_velocity_mph']:.0f} mph){fs_tag}",
+        fontsize=14, fontweight="bold", color=meta["color"],
     )
 
 
@@ -167,9 +163,9 @@ def draw_wall_graph(ax, common_time, hip_q1, hip_q5, ank_q1, ank_q5, frame_num):
                     label="Gap difference (post-FS)")
 
     ax.plot(common_time, gap_q1, color=Q1_META["color"], linewidth=2.5,
-            label=f"Q1: hip-ankle gap  (exit={Q1_META['exit_velocity_mph']:.0f} mph)")
+            label=f"Q1 ({Q1_META['exit_velocity_mph']:.0f} mph)")
     ax.plot(common_time, gap_q5, color=Q5_META["color"], linewidth=2.5,
-            label=f"Q5: hip-ankle gap  (exit={Q5_META['exit_velocity_mph']:.0f} mph)")
+            label=f"Q5 ({Q5_META['exit_velocity_mph']:.0f} mph)")
 
     ax.axvline(0, color="#e74c3c", linewidth=2.5, linestyle="--",
                alpha=0.85, label="Foot strike")
@@ -184,18 +180,10 @@ def draw_wall_graph(ax, common_time, hip_q1, hip_q5, ank_q1, ank_q5, frame_num):
     ax.scatter(t_now, gap_q5[frame_num], s=180, c=Q5_META["color"],
                zorder=6, edgecolors="black", linewidths=2)
 
-    ax.set_xlabel(
-        "<-- before foot strike   |   Time (s)   |   after foot strike -->",
-        fontsize=11, fontweight="bold",
-    )
-    ax.set_ylabel("Hip ahead of ankle — forward direction (cm)\n"
-                  "smaller gap after FS = wall created", fontsize=10)
-    ax.set_title(
-        "The Wall: after foot strike, Q5 hip stops going forward (gap stabilizes) -> pivot created -> hip rotates\n"
-        "Q1 hip keeps moving forward (gap grows) -> no pivot -> rotation lost as linear drift",
-        fontsize=10, fontweight="bold",
-    )
-    ax.legend(loc="upper left", fontsize=9, framealpha=0.9)
+    ax.set_xlabel("Time (s)", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Hip-ankle gap (cm)", fontsize=14)
+    ax.set_title("Hip-Ankle Gap Over Time", fontsize=16, fontweight="bold")
+    ax.legend(loc="upper left", fontsize=12, framealpha=0.9)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(common_time[0] - 0.01, common_time[-1] + 0.01)
 
@@ -291,9 +279,8 @@ def create_gif(output_path):
                 overlay_texts.append(t)
 
         fig.suptitle(
-            "The Wall: hip-ankle gap in forward direction after foot strike (Driveline OBP)\n"
-            "Red = lead leg  |  Stable gap after foot strike = wall created",
-            fontsize=12, fontweight="bold", y=0.99,
+            "The Wall Effect (Driveline OBP)",
+            fontsize=18, fontweight="bold", y=0.99,
         )
 
     print(f"  Rendering {n_anim} frames...")

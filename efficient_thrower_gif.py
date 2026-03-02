@@ -122,12 +122,9 @@ def draw_skeleton(ax, labels, points, fi, bounds, is_fs, title, meta, foot_ancho
     ax.set_zlabel("Z")
 
     fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
-    eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
-        f"{title}{fs_tag}\n"
-        f"{meta['pitch_speed_mph']:.1f} mph  |  arm {meta['arm_speed']:.1f} m/s  |  "
-        f"stride {meta['stride_m']:.2f}m  |  eff {eff_sign}{meta['body_efficiency']:.2f}",
-        fontsize=10, fontweight="bold",
+        f"{title} ({meta['pitch_speed_mph']:.0f} mph){fs_tag}",
+        fontsize=14, fontweight="bold",
     )
     ax.view_init(elev=15, azim=50)
 
@@ -213,9 +210,8 @@ def create_gif(output_path):
                       "Q5: Efficient body mechanics", Q5_META, anchor5)
 
         fig.suptitle(
-            "Efficient Throwing: Same arm speed -> 11 mph difference (Driveline OBP)\n"
-            "Red = Lead leg  |  Orange star = Foot strike landing",
-            fontsize=12, fontweight="bold", y=0.99,
+            "Efficient Throwing: Same Arm Speed, 11 mph Gap (Driveline OBP)",
+            fontsize=16, fontweight="bold", y=0.99,
         )
 
     print(f"  Generating {n_anim} frames...")

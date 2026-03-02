@@ -88,15 +88,14 @@ def plot_story(df, r2_steps, out_path):
         c=d_plot[JERK_COL], cmap="RdYlGn_r", s=80, alpha=0.8,
         edgecolors="gray", linewidths=0.5,
     )
-    plt.colorbar(sc, ax=ax1, label="Knee jerk (red=jerky)")
+    plt.colorbar(sc, ax=ax1, label="Knee jerk")
     z = np.polyfit(d_plot["peak_wrist_linear_speed"], d_plot[TARGET], 1)
     xline = np.linspace(d_plot["peak_wrist_linear_speed"].min(),
                         d_plot["peak_wrist_linear_speed"].max(), 50)
     ax1.plot(xline, np.polyval(z, xline), color="black", lw=2, alpha=0.4)
-    ax1.set_xlabel("Arm speed — peak wrist (m/s)", fontsize=14)
+    ax1.set_xlabel("Arm speed (m/s)", fontsize=14)
     ax1.set_ylabel("Pitch speed (mph)", fontsize=14)
-    ax1.set_title("Same arm speed -> different pitch speed\n"
-                  "(green=smooth knee, red=jerky)", fontsize=13)
+    ax1.set_title("Same Arm Speed, Different Pitch Speed", fontsize=16, fontweight="bold")
 
     # Panel 2: Incremental R2 bars
     ax2 = fig.add_subplot(1, 3, 2)
@@ -112,10 +111,10 @@ def plot_story(df, r2_steps, out_path):
             ax2.text(i, r2 - 0.05, f"+{r2-prev:.3f}", ha="center",
                      fontsize=11, color="white", fontweight="bold")
     ax2.set_xticks(range(len(labels_short)))
-    ax2.set_xticklabels(labels_short, fontsize=13)
-    ax2.set_ylabel("R2 (variance explained)", fontsize=14)
+    ax2.set_xticklabels(labels_short, fontsize=12)
+    ax2.set_ylabel("R² (variance explained)", fontsize=14)
     ax2.set_ylim(0, 0.82)
-    ax2.set_title("Each body component adds\npredictive power", fontsize=13)
+    ax2.set_title("Incremental R² by Component", fontsize=16, fontweight="bold")
 
     # Panel 3: Q1/Q5 pitch speed bars (with arm speed annotation)
     ax3 = fig.add_subplot(1, 3, 3)
@@ -133,12 +132,11 @@ def plot_story(df, r2_steps, out_path):
     ax3.set_xticklabels(["Q1\n(worst)", "Q2", "Q3", "Q4", "Q5\n(best)"], fontsize=13)
     ax3.set_ylabel("Mean pitch speed (mph)", fontsize=14)
     ax3.set_ylim(75, 95)
-    ax3.set_title("Same arm speed, different body use\n"
-                  "(Q1=79 mph vs Q5=89 mph)", fontsize=13)
+    ax3.set_title("Q1=79 vs Q5=89 mph", fontsize=16, fontweight="bold")
 
     fig.suptitle(
-        "Efficient Throwing: 5 Independent Components (n=58 pitchers, R2=0.669)",
-        fontsize=16, fontweight="bold", y=1.02,
+        "Efficient Throwing: 5 Components (n=58, R²=0.669)",
+        fontsize=18, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=200, bbox_inches="tight")
@@ -173,9 +171,8 @@ def plot_breakdown(df, out_path):
     ax1.set_xticks(x)
     ax1.set_xticklabels(body_labels, fontsize=13)
     ax1.axhline(0, color="black", lw=1, ls="--", alpha=0.5)
-    ax1.set_ylabel("Z-score (positive = more efficient)", fontsize=14)
-    ax1.set_title("Body Mechanics: Same arm speed (24.6 vs 24.7 m/s)\n"
-                  "--> 10.3 mph difference!", fontsize=13)
+    ax1.set_ylabel("Z-score (+ = more efficient)", fontsize=14)
+    ax1.set_title("Body Mechanics Gap (10.3 mph)", fontsize=16, fontweight="bold")
     ax1.legend(fontsize=12)
     for xi, (z1, z5) in enumerate(zip(q1_z, q5_z)):
         for val, offset in [(z1, -w / 2), (z5, +w / 2)]:
@@ -204,18 +201,16 @@ def plot_breakdown(df, out_path):
     z = np.polyfit(d_plot["peak_wrist_linear_speed"], d_plot[TARGET], 1)
     xline = np.linspace(20, 30, 50)
     ax2.plot(xline, np.polyval(z, xline), "k--", lw=2, alpha=0.4)
-    ax2.set_xlabel("Arm speed — peak wrist (m/s)", fontsize=14)
+    ax2.set_xlabel("Arm speed (m/s)", fontsize=14)
     ax2.set_ylabel("Pitch speed (mph)", fontsize=14)
-    ax2.set_title("\"Efficient throwing\" exists\n"
-                  "(same arm speed -> 10 mph range)", fontsize=13)
+    ax2.set_title("Arm Speed vs Pitch Speed", fontsize=16, fontweight="bold")
     ax2.legend(fontsize=12, loc="upper left")
     ax2.set_xlim(19.5, 30.5)
     ax2.set_ylim(75, 98)
 
     fig.suptitle(
-        "Efficient Throwing: Body Mechanics Explain 17.8% Beyond Arm Speed"
-        " (R2: 0.491 -> 0.669)",
-        fontsize=15, fontweight="bold", y=1.02,
+        "Efficient Throwing: +17.8% Variance from Body Mechanics",
+        fontsize=18, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=200, bbox_inches="tight")

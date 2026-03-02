@@ -119,12 +119,9 @@ def draw_skeleton(ax, labels, points, fi, bounds, is_fs, title, meta, foot_ancho
     ax.set_zlabel("Z")
 
     fs_tag = "  ** FOOT STRIKE **" if is_fs else ""
-    eff_sign = "+" if meta["body_efficiency"] > 0 else ""
     ax.set_title(
-        f"{title}{fs_tag}\n"
-        f"exit vel {meta['exit_velocity_mph']:.1f} mph  |  bat {meta['bat_speed']:.2f} m/s  |  "
-        f"stride {meta['stride_m']:.2f}m  |  body eff {eff_sign}{meta['body_efficiency']:.2f} mph",
-        fontsize=10, fontweight="bold",
+        f"{title} ({meta['exit_velocity_mph']:.0f} mph){fs_tag}",
+        fontsize=14, fontweight="bold",
     )
     ax.view_init(elev=15, azim=50)
 
@@ -207,10 +204,8 @@ def create_gif(output_path):
                       "Q5: Long stride (efficient body use)", Q5_META, anchor5)
 
         fig.suptitle(
-            "Efficient Hitting: Same bat speed (~7 m/s) -> 22.6 mph exit velocity gap (Driveline OBP)\n"
-            "Red = lead leg (stride foot)  |  Orange star = foot strike landing\n"
-            "Body efficiency score = exit velocity above what bat speed + size alone predicts (+ is good)",
-            fontsize=11, fontweight="bold", y=0.99,
+            "Efficient Hitting: Same Bat Speed, 22 mph Gap (Driveline OBP)",
+            fontsize=16, fontweight="bold", y=0.99,
         )
 
     print(f"  Generating {n_anim} frames...")

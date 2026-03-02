@@ -88,22 +88,22 @@ def plot_brace(df, out_path):
                 arrowprops=dict(arrowstyle="->", color=Q1_COLOR, lw=1.5))
 
     ax.set_xlabel("Time after foot strike (ms)", fontsize=14)
-    ax.set_ylabel("Front knee forward velocity (m/s)\n+ = toward pitcher   - = extending", fontsize=13)
-    ax.set_title("Front knee stops faster in Q5\n= brace locks in earlier", fontsize=14)
-    ax.legend(fontsize=11, loc="lower left")
+    ax.set_ylabel("Knee forward velocity (m/s)", fontsize=14)
+    ax.set_title("Knee Velocity After Foot Strike", fontsize=16, fontweight="bold")
+    ax.legend(fontsize=12, loc="lower left")
     ax.grid(True, alpha=0.3)
     ax.set_xticks(times)
 
     # --- Panel 2: Time to peak extension + peak velocity bars ---
     ax2 = axes[1]
     metrics = {
-        "Time to peak\nextension (s)\n↓ lower = faster": (
+        "Time to peak\nextension (s)": (
             "llb_time_to_peak_extension", -1, "s"
         ),
-        "Peak knee ext\nvelocity (deg/s)\n↑ higher = stronger": (
+        "Peak ext\nvelocity (deg/s)": (
             "llb_knee_ext_peak_velocity", +1, "deg/s"
         ),
-        "Knee forward\ndecel (m/s²)\n↑ higher = sharper": (
+        "Knee forward\ndecel (m/s²)": (
             "llb_knee_forward_decel", +1, "m/s²"
         ),
     }
@@ -132,11 +132,11 @@ def plot_brace(df, out_path):
                  ha="center", fontsize=11, fontweight="bold", color=Q5_COLOR)
 
     ax2.set_xticks(x)
-    ax2.set_xticklabels(labels_m, fontsize=11)
-    ax2.set_title("Brace quality metrics\nQ5 braces faster and stronger", fontsize=14)
+    ax2.set_xticklabels(labels_m, fontsize=12)
+    ax2.set_title("Brace Quality Metrics", fontsize=16, fontweight="bold")
     ax2.legend(fontsize=12)
     ax2.grid(True, alpha=0.3, axis="y")
-    ax2.set_ylabel("Value (sign-flipped so higher = better brace)", fontsize=11)
+    ax2.set_ylabel("Value (higher = better)", fontsize=14)
 
     # --- Panel 3: Scatter stride vs time_to_peak_extension, colored by exit vel ---
     ax3 = axes[2]
@@ -158,15 +158,15 @@ def plot_brace(df, out_path):
                     c=color, s=120, edgecolors="black",
                     linewidths=2, zorder=5, label=label)
 
-    ax3.set_xlabel("Stride length (m)\nlonger = more forward momentum", fontsize=13)
-    ax3.set_ylabel("Time to peak knee extension (s)\nshorter = faster brace", fontsize=13)
-    ax3.set_title("Stride + fast brace = high exit velocity\n(green = high exit vel)", fontsize=14)
+    ax3.set_xlabel("Stride length (m)", fontsize=14)
+    ax3.set_ylabel("Time to peak extension (s)", fontsize=14)
+    ax3.set_title("Stride vs Brace Timing", fontsize=16, fontweight="bold")
     ax3.legend(fontsize=12)
     ax3.grid(True, alpha=0.3)
 
     fig.suptitle(
-        "Front Leg Brace (Hitting): stride creates momentum, rapid knee extension converts it to rotation",
-        fontsize=15, fontweight="bold", y=1.02,
+        "Front Leg Brace Quality (Driveline OBP)",
+        fontsize=18, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=200, bbox_inches="tight")

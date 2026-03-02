@@ -129,14 +129,13 @@ def plot_story(df, r2_steps, out_path):
         c=d_plot[color_col], cmap="RdYlGn", s=80, alpha=0.8,
         edgecolors="gray", linewidths=0.5,
     )
-    plt.colorbar(sc, ax=ax1, label=f"{color_col} (green=fast)")
+    plt.colorbar(sc, ax=ax1, label="Trunk velocity")
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax1.plot(xline, np.polyval(z, xline), color="black", lw=2, alpha=0.4)
-    ax1.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=14)
+    ax1.set_xlabel("Bat speed (m/s)", fontsize=14)
     ax1.set_ylabel("Exit velocity (mph)", fontsize=14)
-    ax1.set_title("Same bat speed → different exit velocity\n"
-                  "(green=fast hip rotation, red=slow)", fontsize=13)
+    ax1.set_title("Same Bat Speed, Different Exit Velo", fontsize=16, fontweight="bold")
 
     # Panel 2: Incremental R2 bars
     ax2 = fig.add_subplot(1, 3, 2)
@@ -152,10 +151,10 @@ def plot_story(df, r2_steps, out_path):
             ax2.text(i, r2 - 0.05, f"+{r2 - prev:.3f}", ha="center",
                      fontsize=11, color="white", fontweight="bold")
     ax2.set_xticks(range(len(labels_short)))
-    ax2.set_xticklabels(labels_short, fontsize=13)
-    ax2.set_ylabel("R2 (variance explained)", fontsize=14)
+    ax2.set_xticklabels(labels_short, fontsize=12)
+    ax2.set_ylabel("R² (variance explained)", fontsize=14)
     ax2.set_ylim(0, min(max(r2_vals) + 0.15, 1.0))
-    ax2.set_title("Each body component adds\npredictive power", fontsize=13)
+    ax2.set_title("Incremental R² by Component", fontsize=16, fontweight="bold")
 
     # Panel 3: Q1/Q5 exit velocity bars (with bat speed annotation)
     ax3 = fig.add_subplot(1, 3, 3)
@@ -175,14 +174,13 @@ def plot_story(df, r2_steps, out_path):
     q1_ev = q_grp[q_grp["eff_q"] == "Q1"]["exit_velo"].values[0] if "Q1" in q_grp["eff_q"].values else 80
     q5_ev = q_grp[q_grp["eff_q"] == "Q5"]["exit_velo"].values[0] if "Q5" in q_grp["eff_q"].values else 95
     ax3.set_ylim(max(q1_ev - 10, 60), q5_ev + 5)
-    ax3.set_title(f"Same bat speed, different body use\n"
-                  f"(Q1={q1_ev:.1f} mph vs Q5={q5_ev:.1f} mph)", fontsize=13)
+    ax3.set_title(f"Q1={q1_ev:.0f} vs Q5={q5_ev:.0f} mph", fontsize=16, fontweight="bold")
 
     n_total = len(df.dropna(subset=[TARGET]))
     r2_max = r2_vals[-1] if r2_vals else 0
     fig.suptitle(
-        f"Efficient Hitting: Body Mechanics Beyond Bat Speed (n={n_total}, R2={r2_max:.3f})",
-        fontsize=16, fontweight="bold", y=1.02,
+        f"Efficient Hitting: Beyond Bat Speed (n={n_total})",
+        fontsize=18, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=200, bbox_inches="tight")
@@ -236,11 +234,10 @@ def plot_breakdown(df, out_path):
     ax1.set_xticks(x)
     ax1.set_xticklabels(body_labels, fontsize=13)
     ax1.axhline(0, color="black", lw=1, ls="--", alpha=0.5)
-    ax1.set_ylabel("Z-score (positive = more efficient)", fontsize=14)
+    ax1.set_ylabel("Z-score (+ = more efficient)", fontsize=14)
     ax1.set_title(
-        f"Body Mechanics: Similar bat speed ({q1_bat:.1f} vs {q5_bat:.1f} m/s)\n"
-        f"--> {q5_ev - q1_ev:.1f} mph exit velocity gap",
-        fontsize=13,
+        f"Body Mechanics Gap ({q5_ev - q1_ev:.0f} mph)",
+        fontsize=16, fontweight="bold",
     )
     ax1.legend(fontsize=12)
     for xi, (z1, z5) in enumerate(zip(q1_z, q5_z)):
@@ -264,10 +261,9 @@ def plot_breakdown(df, out_path):
     z = np.polyfit(d_plot[BAT_SPEED], d_plot[TARGET], 1)
     xline = np.linspace(d_plot[BAT_SPEED].min(), d_plot[BAT_SPEED].max(), 50)
     ax2.plot(xline, np.polyval(z, xline), "k--", lw=2, alpha=0.4)
-    ax2.set_xlabel("Bat speed proxy — peak wrist (m/s)", fontsize=14)
+    ax2.set_xlabel("Bat speed (m/s)", fontsize=14)
     ax2.set_ylabel("Exit velocity (mph)", fontsize=14)
-    ax2.set_title('"Efficient hitting" exists\n'
-                  "(same bat speed -> exit velocity range)", fontsize=13)
+    ax2.set_title("Bat Speed vs Exit Velocity", fontsize=16, fontweight="bold")
     ax2.legend(fontsize=12, loc="upper left")
 
     r2_delta = 0
@@ -284,8 +280,8 @@ def plot_breakdown(df, out_path):
             r2_delta = r2_score(d1[TARGET].values, X1 @ c1) - r2_score(d0[TARGET].values, X0 @ c0)
 
     fig.suptitle(
-        f"Efficient Hitting: Body Mechanics Explain {r2_delta * 100:.1f}% Additional Variance Beyond Bat Speed",
-        fontsize=15, fontweight="bold", y=1.02,
+        f"Efficient Hitting: +{r2_delta * 100:.0f}% Variance from Body Mechanics",
+        fontsize=18, fontweight="bold", y=1.02,
     )
     fig.tight_layout()
     fig.savefig(str(out_path), dpi=200, bbox_inches="tight")
