@@ -287,27 +287,37 @@ def plot_correlation_matrix(df, mode, output_dir):
         return
 
     cols = [speed_key] + feature_cols
-    corr_df = df[cols].dropna(axis=1, how="all").corr()
+    full_corr = df[cols].dropna(axis=1, how="all").corr()
+
+    # Keep only top 15 features most correlated with speed
+    if speed_key in full_corr.columns:
+        speed_corr = full_corr[speed_key].drop(speed_key, errors="ignore").abs().sort_values(ascending=False)
+        top_features = speed_corr.head(15).index.tolist()
+        keep_cols = [speed_key] + top_features
+        corr_df = full_corr.loc[keep_cols, keep_cols]
+    else:
+        corr_df = full_corr
 
     fig, ax = plt.subplots(figsize=(12, 10))
     im = ax.imshow(corr_df, cmap="RdBu_r", vmin=-1, vmax=1)
     ax.set_xticks(range(len(corr_df.columns)))
     ax.set_yticks(range(len(corr_df.columns)))
-    labels = [c.replace("_", "\n") for c in corr_df.columns]
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
-    ax.set_yticklabels(labels, fontsize=9)
+    labels = [c.replace("_", " ") for c in corr_df.columns]
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=12)
+    ax.set_yticklabels(labels, fontsize=12)
 
     # Add correlation values
     for i in range(len(corr_df)):
         for j in range(len(corr_df)):
             val = corr_df.iloc[i, j]
             if not np.isnan(val):
-                ax.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=8,
+                ax.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=10,
                         color="white" if abs(val) > 0.5 else "black")
 
-    plt.colorbar(im, ax=ax, label="Correlation")
-    ax.set_title(f"Skeleton Features × {'Pitch Speed' if mode == 'pitching' else 'Exit Velocity'}",
-                 fontsize=16, fontweight="bold")
+    plt.colorbar(im, ax=ax, label="Correlation", shrink=0.8)
+    speed_label = "Pitch Speed" if mode == "pitching" else "Exit Velocity"
+    ax.set_title(f"Top 15 Features × {speed_label}",
+                 fontsize=18, fontweight="bold")
     plt.tight_layout()
 
     path = output_dir / f"correlation_{mode}.png"
