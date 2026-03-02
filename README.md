@@ -18,9 +18,9 @@ Biomechanical skeleton analysis pipeline for baseball pitching and hitting motio
 
 | Section | Title | Links |
 |---------|-------|-------|
-| Getting Started | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f) |
-| Pitching Analysis | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132) |
-| Hitting Analysis | Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity | *(coming soon)* |
+| Getting Started | 3D Skeleton Detection from Baseball Motion Capture Data | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) · [DEV.to](https://dev.to/yasumorishima/3d-skeleton-detection-from-baseball-motion-capture-data-with-driveline-c3d-29ja) |
+| Pitching Analysis | Why Two Pitchers with the Same Arm Speed Differ by 10 mph | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) · [DEV.to](https://dev.to/yasumorishima/why-two-pitchers-with-the-same-arm-speed-differ-by-10-mph-a-motion-capture-analysis-ljk) |
+| Hitting Analysis | Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity | [Zenn](https://zenn.dev/shogaku/articles/baseball-cv-hitting-frontleg) · [DEV.to](https://dev.to/yasumorishima/does-exit-velocity-come-from-the-front-foot-exploring-driveline-motion-capture-data-4d40) |
 
 ## Results
 
@@ -106,7 +106,7 @@ The time-series shows each joint's rotational speed per frame. This reveals the 
 
 With 16 samples the p-values don't reach significance, but trunk rotation range shows the strongest correlation (r=0.425). The full pitching analysis expands this with 60 pitchers.
 
-> 📝 [3D Skeleton Detection from Baseball Motion Capture Data](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/1223f01edb8c02abd68f))
+> 📝 [3D Skeleton Detection from Baseball Motion Capture Data](https://zenn.dev/shogaku/articles/baseball-cv-skeleton-biomechanics) (Zenn · [DEV.to](https://dev.to/yasumorishima/3d-skeleton-detection-from-baseball-motion-capture-data-with-driveline-c3d-29ja))
 
 ---
 
@@ -140,7 +140,7 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 
 > **Root cause of short stride**: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited (ankle braking → stride r=+0.55\*\*\*).
 
-> 📝 [Why Two Pitchers with the Same Arm Speed Differ by 10 mph](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) (Zenn · [Qiita](https://qiita.com/yasumorishima/items/aa06d1126b2a8269a132))
+> 📝 [Why Two Pitchers with the Same Arm Speed Differ by 10 mph](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) (Zenn · [DEV.to](https://dev.to/yasumorishima/why-two-pitchers-with-the-same-arm-speed-differ-by-10-mph-a-motion-capture-analysis-ljk))
 
 ---
 
@@ -185,6 +185,8 @@ Red = lead leg (front foot/stride leg). Orange star = foot strike landing point.
 > **Body Efficiency Score**: Residual of exit velocity after controlling for bat speed, height, and weight together. A score of +9.70 mph means this hitter produces 9.7 mph *more* exit velocity than a hitter of the same size and bat speed — purely from body mechanics.
 
 > **Root cause of short stride**: low ankle braking deceleration → foot fails to create a stable braking base → stride is curtailed → less forward momentum transfers into rotation at contact.
+
+> 📝 [Why Two Hitters with the Same Bat Speed Differ by 20 mph in Exit Velocity](https://zenn.dev/shogaku/articles/baseball-cv-hitting-frontleg) (Zenn · [DEV.to](https://dev.to/yasumorishima/does-exit-velocity-come-from-the-front-foot-exploring-driveline-motion-capture-data-4d40))
 
 ## Setup
 
