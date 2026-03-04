@@ -136,9 +136,9 @@ With 16 samples the p-values don't reach significance, but trunk rotation range 
 
 ![Efficient Thrower Comparison](data/output/efficient_thrower_comparison.gif)
 
-> **Knee smoothness** is a suppressor variable: raw r=+0.12 (explosive athletes have fast arms AND jerky knees), but after controlling for arm speed: r=−0.45\*\*\* — smooth knee → pelvis/arm ratio 17% higher → body drives the arm rather than the arm self-generating.
+> **Knee smoothness** (suppressor variable): 単純相関では r=+0.12（速い腕 = 膝も激しい）だが、腕速度を同じにして比較すると r=−0.45\*\*\* — 滑らかな膝の動きは「腕が自分で速度を作る」のではなく「体幹が腕を振り回している」状態を示す。骨盤/腕速度比が17%高い。
 
-> **Root cause of short stride**: low ankle braking (Q1: 0.06 vs Q5: 3.58 m/s²) → foot doesn't create a stable base → stride limited (ankle braking → stride r=+0.55\*\*\*).
+> **短いストライドの根本原因**: アンクルブレーキング（着地後の足の急減速）が低い（Q1: 0.06 vs Q5: 3.58 m/s²）→ 着地した足が安定した台座を作れない → ストライドが制限される（r=+0.55\*\*\*）。「足が地面に刺さる」感覚がないと前への勢いが腕に伝わらない。
 
 > 📝 [Why Two Pitchers with the Same Arm Speed Differ by 10 mph](https://zenn.dev/shogaku/articles/baseball-cv-efficient-throwing) (Zenn · [DEV.to](https://dev.to/yasumorishima/why-two-pitchers-with-the-same-arm-speed-differ-by-10-mph-a-motion-capture-analysis-ljk))
 
@@ -246,5 +246,7 @@ python efficient_hitter_gif.py
 See [DATA_SOURCES.md](DATA_SOURCES.md) for full details and license restrictions.
 
 ## License Disclaimer
+
+> ⚠️ **Driveline OpenBiomechanics データは非営利・教育用途のみ（CC BY-NC-SA 4.0）。プロ球団の従業員・契約者は使用不可。** このプロジェクトはポートフォリオ・教育目的で作成しています。
 
 The Driveline OBP data is licensed under CC BY-NC-SA 4.0 (non-commercial only). Employees or contractors of professional sports organizations are restricted from using this data. This project is for educational and portfolio purposes.
