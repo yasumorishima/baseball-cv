@@ -245,6 +245,8 @@ python efficient_hitter_gif.py
 
 See [DATA_SOURCES.md](DATA_SOURCES.md) for full details and license restrictions.
 
+License: code is MIT ([LICENSE](LICENSE)); everything under `data/` is CC BY-NC-SA 4.0 with the Driveline exclusion ([data/LICENSE.md](data/LICENSE.md)).
+
 ## License Disclaimer
 
 > ⚠️ **Driveline OpenBiomechanics データは非営利・教育用途のみ（CC BY-NC-SA 4.0）。プロ球団の従業員・契約者は使用不可。** このプロジェクトはポートフォリオ・教育目的で作成しています。
