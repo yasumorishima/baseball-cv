@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This license covers the code only. Everything under data/ (the Driveline
-OpenBiomechanics Project files and everything derived from them, including
-the CSVs and the images and animations in data/output/) is licensed under
-CC BY-NC-SA 4.0. See data/LICENSE.md.
